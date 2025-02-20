@@ -2,7 +2,7 @@ import { InputIndicator } from "../elements/input-indicator";
 import { sleep } from "../utils/misc";
 import Ape from "../ape";
 import { navigate } from "../controllers/route-controller";
-import * as Skeleton from "../popups/skeleton";
+import * as Skeleton from "../utils/skeleton";
 
 const searchIndicator = new InputIndicator(
   $(".page.pageProfileSearch .search input"),
@@ -24,12 +24,12 @@ const searchIndicator = new InputIndicator(
 );
 
 function disableInputs(): void {
-  $(".page.pageProfileSearch .search .button").addClass("disabled");
+  $(".page.pageProfileSearch .search button").addClass("disabled");
   $(".page.pageProfileSearch .search input").attr("disabled", "disabled");
 }
 
 function enableInputs(): void {
-  $(".page.pageProfileSearch .search .button").removeClass("disabled");
+  $(".page.pageProfileSearch .search button").removeClass("disabled");
   $(".page.pageProfileSearch .search input").removeAttr("disabled");
 }
 
@@ -37,6 +37,10 @@ function areInputsDisabled(): boolean {
   return (
     $(".page.pageProfileSearch .search input").attr("disabled") !== undefined
   );
+}
+
+function focusInput(): void {
+  $(".page.pageProfileSearch .search input").trigger("focus");
 }
 
 async function lookupProfile(): Promise<void> {
@@ -49,28 +53,27 @@ async function lookupProfile(): Promise<void> {
 
   await sleep(500);
 
-  const response = await Ape.users.getProfileByName(name);
+  const response = await Ape.users.getProfile({ params: { uidOrName: name } });
   enableInputs();
   if (response.status === 404) {
+    focusInput();
     searchIndicator.show("notFound", "User not found");
     return;
   } else if (response.status !== 200) {
-    searchIndicator.show("error", `Error: ${response.message}`);
+    focusInput();
+    searchIndicator.show("error", `Error: ${response.body.message}`);
     return;
   }
   searchIndicator.hide();
   navigate(`/profile/${name}`, {
-    data: response.data,
+    data: response.body.data,
   });
 }
 
-$(".page.pageProfileSearch .search input").on("keyup", (e) => {
-  if (e.key === "Enter" && !areInputsDisabled()) lookupProfile();
-});
-
-$(".page.pageProfileSearch .search .button").on("click", () => {
+$(".page.pageProfileSearch form").on("submit", (e) => {
+  e.preventDefault();
   if (areInputsDisabled()) return;
-  lookupProfile();
+  void lookupProfile();
 });
 
 Skeleton.save("pageProfileSearch");
