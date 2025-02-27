@@ -2,15 +2,30 @@ import * as Misc from "./misc";
 import Config, * as UpdateConfig from "../config";
 import * as Notifications from "../elements/notifications";
 import { decompressFromURI } from "lz-ts";
-import * as QuoteSearchPopup from "../popups/quote-search-popup";
+import * as TestState from "../test/test-state";
 import * as ManualRestart from "../test/manual-restart-tracker";
 import * as CustomText from "../test/custom-text";
 import Ape from "../ape";
-import * as Settings from "../pages/settings";
 import * as DB from "../db";
 import * as Loader from "../elements/loader";
 import * as AccountButton from "../elements/account-button";
 import { restart as restartTest } from "../test/test-logic";
+import * as ChallengeController from "../controllers/challenge-controller";
+import {
+  DifficultySchema,
+  Mode2Schema,
+  ModeSchema,
+} from "@monkeytype/contracts/schemas/shared";
+import {
+  CustomBackgroundFilter,
+  CustomBackgroundFilterSchema,
+  CustomBackgroundSize,
+  CustomBackgroundSizeSchema,
+  CustomThemeColors,
+  CustomThemeColorsSchema,
+} from "@monkeytype/contracts/schemas/configs";
+import { z } from "zod";
+import { parseWithSchema as parseJsonWithSchema } from "@monkeytype/util/json";
 
 export async function linkDiscord(hashOverride: string): Promise<void> {
   if (!hashOverride) return;
@@ -22,49 +37,65 @@ export async function linkDiscord(hashOverride: string): Promise<void> {
     const state = fragment.get("state") as string;
 
     Loader.show();
-    const response = await Ape.users.linkDiscord(tokenType, accessToken, state);
+    const response = await Ape.users.linkDiscord({
+      body: { tokenType, accessToken, state },
+    });
     Loader.hide();
 
     if (response.status !== 200) {
-      return Notifications.add(
-        "Failed to link Discord: " + response.message,
-        -1
-      );
+      Notifications.add("Failed to link Discord: " + response.body.message, -1);
+      return;
     }
 
-    Notifications.add(response.message, 1);
+    if (response.body.data === null) {
+      Notifications.add("Failed to link Discord: data returned was null", -1);
+      return;
+    }
+
+    Notifications.add(response.body.message, 1);
 
     const snapshot = DB.getSnapshot();
     if (!snapshot) return;
 
-    const { discordId, discordAvatar } = response.data;
-    if (discordId) {
+    const { discordId, discordAvatar } = response.body.data;
+    if (discordId !== undefined) {
       snapshot.discordId = discordId;
     } else {
       snapshot.discordAvatar = discordAvatar;
     }
 
     DB.setSnapshot(snapshot);
-
-    AccountButton.update(undefined, discordId, discordAvatar);
-
-    Settings.updateDiscordSection();
+    AccountButton.updateAvatar(discordId, discordAvatar);
   }
 }
+
+const customThemeUrlDataSchema = z.object({
+  c: CustomThemeColorsSchema,
+  i: z.string().optional(),
+  s: CustomBackgroundSizeSchema.optional(),
+  f: CustomBackgroundFilterSchema.optional(),
+});
 
 export function loadCustomThemeFromUrl(getOverride?: string): void {
   const getValue = Misc.findGetParameter("customTheme", getOverride);
   if (getValue === null) return;
 
-  let decoded = null;
+  let decoded: z.infer<typeof customThemeUrlDataSchema>;
   try {
-    decoded = JSON.parse(atob(getValue));
+    decoded = parseJsonWithSchema(atob(getValue), customThemeUrlDataSchema);
   } catch (e) {
-    return Notifications.add("Invalid custom theme ", 0);
+    console.log("Custom theme URL decoding failed", e);
+    Notifications.add(
+      "Failed to load theme from URL: " + (e as Error).message,
+      0
+    );
+    return;
   }
 
-  let colorArray = [];
-  let image, size, filter;
+  let colorArray: CustomThemeColors | undefined;
+  let image: string | undefined;
+  let size: CustomBackgroundSize | undefined;
+  let filter: CustomBackgroundFilter | undefined;
   if (Array.isArray(decoded.c) && decoded.c.length === 10) {
     colorArray = decoded.c;
     image = decoded.i;
@@ -72,11 +103,12 @@ export function loadCustomThemeFromUrl(getOverride?: string): void {
     filter = decoded.f;
   } else if (Array.isArray(decoded) && decoded.length === 10) {
     // This is for backward compatibility with old format
-    colorArray = decoded;
+    colorArray = decoded as unknown as CustomThemeColors;
   }
 
-  if (colorArray.length === 0) {
-    return Notifications.add("Invalid custom theme ", 0);
+  if (colorArray === undefined || colorArray.length !== 10) {
+    Notifications.add("Failed to load theme from URL: no colors found", 0);
+    return;
   }
 
   const oldCustomTheme = Config.customTheme;
@@ -85,7 +117,7 @@ export function loadCustomThemeFromUrl(getOverride?: string): void {
     UpdateConfig.setCustomThemeColors(colorArray);
     Notifications.add("Custom theme applied", 1);
 
-    if (image !== undefined) {
+    if (image !== undefined && size !== undefined && filter !== undefined) {
       UpdateConfig.setCustomBackground(image);
       UpdateConfig.setCustomBackgroundSize(size);
       UpdateConfig.setCustomBackgroundFilter(filter);
@@ -100,93 +132,103 @@ export function loadCustomThemeFromUrl(getOverride?: string): void {
   }
 }
 
-type SharedTestSettings = [
-  MonkeyTypes.Mode | null,
-  MonkeyTypes.Mode2<MonkeyTypes.Mode> | null,
-  MonkeyTypes.CustomText | null,
-  boolean | null,
-  boolean | null,
-  string | null,
-  MonkeyTypes.Difficulty | null,
-  string | null
-];
+const TestSettingsSchema = z.tuple([
+  ModeSchema.nullable(),
+  Mode2Schema.nullable(),
+  CustomText.CustomTextSettingsSchema.nullable(),
+  z.boolean().nullable(), //punctuation
+  z.boolean().nullable(), //numbers
+  z.string().nullable(), //language
+  DifficultySchema.nullable(),
+  z.string().nullable(), //funbox
+]);
+
+type SharedTestSettings = z.infer<typeof TestSettingsSchema>;
 
 export function loadTestSettingsFromUrl(getOverride?: string): void {
   const getValue = Misc.findGetParameter("testSettings", getOverride);
   if (getValue === null) return;
 
-  const de: SharedTestSettings = JSON.parse(decompressFromURI(getValue) ?? "");
+  let de: SharedTestSettings;
+  try {
+    const decompressed = decompressFromURI(getValue) ?? "";
+    de = parseJsonWithSchema(decompressed, TestSettingsSchema);
+  } catch (e) {
+    console.error("Failed to parse test settings:", e);
+    Notifications.add(
+      "Failed to load test settings from URL: " + (e as Error).message,
+      0
+    );
+    return;
+  }
 
-  const applied: { [key: string]: string } = {};
+  const applied: Record<string, string> = {};
 
-  if (de[0]) {
+  if (de[0] !== null) {
     UpdateConfig.setMode(de[0], true);
     applied["mode"] = de[0];
   }
 
-  if (de[1]) {
-    if (Config.mode === "time") {
+  const mode = de[0] ?? Config.mode;
+  if (de[1] !== null) {
+    if (mode === "time") {
       UpdateConfig.setTimeConfig(parseInt(de[1], 10), true);
-    } else if (Config.mode === "words") {
+    } else if (mode === "words") {
       UpdateConfig.setWordCount(parseInt(de[1], 10), true);
-    } else if (Config.mode === "quote") {
+    } else if (mode === "quote") {
       UpdateConfig.setQuoteLength(-2, false);
-      QuoteSearchPopup.setSelectedId(parseInt(de[1], 10));
+      TestState.setSelectedQuoteId(parseInt(de[1], 10));
       ManualRestart.set();
     }
     applied["mode2"] = de[1];
   }
 
-  if (de[2]) {
+  if (de[2] !== null) {
     const customTextSettings = de[2];
-    CustomText.setPopupTextareaState(
-      customTextSettings["text"].join(customTextSettings["delimiter"])
-    );
-    CustomText.setText(customTextSettings["text"]);
-    CustomText.setIsTimeRandom(customTextSettings["isTimeRandom"]);
-    CustomText.setIsWordRandom(customTextSettings["isWordRandom"]);
-    if (customTextSettings["isTimeRandom"]) {
-      CustomText.setTime(customTextSettings["time"]);
-    }
-    if (customTextSettings["isWordRandom"]) {
-      CustomText.setWord(customTextSettings["word"]);
-    }
-    CustomText.setDelimiter(customTextSettings["delimiter"]);
+    CustomText.setText(customTextSettings.text);
+    CustomText.setLimitMode(customTextSettings.limit.mode);
+    CustomText.setLimitValue(customTextSettings.limit.value);
+    CustomText.setPipeDelimiter(customTextSettings.pipeDelimiter);
+
     applied["custom text settings"] = "";
   }
 
-  if (de[3]) {
+  if (de[3] !== null) {
     UpdateConfig.setPunctuation(de[3], true);
     applied["punctuation"] = de[3] ? "on" : "off";
   }
 
-  if (de[4]) {
+  if (de[4] !== null) {
     UpdateConfig.setNumbers(de[4], true);
     applied["numbers"] = de[4] ? "on" : "off";
   }
 
-  if (de[5]) {
+  if (de[5] !== null) {
     UpdateConfig.setLanguage(de[5], true);
     applied["language"] = de[5];
   }
 
-  if (de[6]) {
+  if (de[6] !== null) {
     UpdateConfig.setDifficulty(de[6], true);
     applied["difficulty"] = de[6];
   }
 
-  if (de[7]) {
+  if (de[7] !== null) {
     UpdateConfig.setFunbox(de[7], true);
     applied["funbox"] = de[7];
   }
 
-  restartTest();
+  restartTest({
+    nosave: true,
+  });
 
   let appliedString = "";
 
   Object.keys(applied).forEach((setKey) => {
     const set = applied[setKey];
-    appliedString += `${setKey}${set ? ": " + set : ""}<br>`;
+    if (set !== undefined) {
+      appliedString += `${setKey}${Misc.escapeHTML(set ? ": " + set : "")}<br>`;
+    }
   });
 
   if (appliedString !== "") {
@@ -195,4 +237,26 @@ export function loadTestSettingsFromUrl(getOverride?: string): void {
       allowHTML: true,
     });
   }
+}
+
+export function loadChallengeFromUrl(getOverride?: string): void {
+  const getValue = (
+    Misc.findGetParameter("challenge", getOverride) ?? ""
+  ).toLowerCase();
+  if (getValue === "") return;
+
+  Notifications.add("Loading challenge", 0);
+  ChallengeController.setup(getValue)
+    .then((result) => {
+      if (result) {
+        Notifications.add("Challenge loaded", 1);
+        restartTest({
+          nosave: true,
+        });
+      }
+    })
+    .catch((e: unknown) => {
+      Notifications.add("Failed to load challenge", -1);
+      console.error(e);
+    });
 }

@@ -38,12 +38,6 @@
       "id": 5
     },
     {
-      "text": "È molto semplice: non vedo bene che col cuore. L'essenziale è invisibile agli occhi.",
-      "source": "Antoine De Saint-Exupéry - Little Prince",
-      "length": 84,
-      "id": 6
-    },
-    {
       "text": "La vita non è quella che si è vissuta, ma quella che si ricorda e come la si ricorda per raccontarla.",
       "source": "Gabriel García Márquez, Vivere per raccontarla",
       "length": 101,
@@ -224,7 +218,7 @@
       "id": 36
     },
     {
-      "text": "La vita è terribile. È lei che ci governa, non noi che la governiamo.",
+      "text": "La vita è terribile. E lei che ci governa, non noi che la governiamo.",
       "source": "Oscar Wilde",
       "length": 69,
       "id": 37
@@ -266,9 +260,9 @@
       "id": 43
     },
     {
-      "text": "Se vogliamo che tutto rimanga come è, bisogna che tutto cambi.",
+      "text": "Se vogliamo che tutto rimanga com'è, bisogna che tutto cambi.",
       "source": "Giuseppe Tomasi di Lampedusa",
-      "length": 62,
+      "length": 61,
       "id": 44
     },
     {
@@ -306,60 +300,6 @@
       "source": "William Shakespeare",
       "length": 103,
       "id": 50
-    },
-    {
-      "text": "Vedo il mondo mutarsi lentamente in un deserto, odo sempre più forte l’avvicinarsi del rombo che ucciderà anche noi, partecipo al dolore di milioni di uomini, eppure, quando guardo il cielo, penso che tutto volgerà nuovamente al bene, che anche questa spietata durezza cesserà, che ritorneranno l’ordine, la pace e la serenità..",
-      "source": "Anna Frank",
-      "length": 328,
-      "id": 51
-    },
-    {
-      "text": "Il solo vero viaggio, il solo bagno di giovinezza, non sarebbe quello di andare verso nuovi paesaggi, ma di avere occhi diversi, di vedere l'universo con gli occhi di un altro, di cento altri, di vedere i cento universi che ciascuno di essi vede, che ciascuno di essi è..",
-      "source": "Marcel Proust",
-      "length": 271,
-      "id": 52
-    },
-    {
-      "text": "Il più bello dei mari è quello che non navigammo. Il più bello dei nostri figli non è ancora cresciuto. I più belli dei nostri giorni non li abbiamo ancora vissuti. E quello che vorrei dirti di più bello non te l’ho ancora detto..",
-      "source": "Nazim Hikmet",
-      "length": 230,
-      "id": 53
-    },
-    {
-      "text": "Non sempre le nuvole offuscano il cielo: a volte lo illuminano..",
-      "source": "Elsa Morante",
-      "length": 64,
-      "id": 54
-    },
-    {
-      "text": "Oggi non è che un giorno qualunque di tutti i giorni che verranno. Ma quello che accadrà in tutti gli altri giorni che verranno può dipendere da quello che farai oggi..",
-      "source": "Ernest Hemingway",
-      "length": 168,
-      "id": 55
-    },
-    {
-      "text": "Quando la tempesta sarà finita, probabilmente non saprai neanche tu come hai fatto ad attraversarla e a uscirne vivo. Anzi, non sarai neanche sicuro se sia finita per davvero. Ma su un punto non c'è dubbio. Ed è che tu, uscito da quel vento, non sarai lo stesso che vi è entrato..",
-      "source": "Kafka",
-      "length": 280,
-      "id": 56
-    },
-    {
-      "text": "Se nel mondo non c'è amore faremo un altro mondo, e lo circonderemo di mura massicce e lo arrederemo con interni rossi e soffici, e gli forniremo un battaglio che suoni come un diamante caduto nel feltro di un gioielliere in modo che non lo sentiamo mai. Amami perché l'amore non esiste e io ho provato tutto ciò che esiste..",
-      "source": "Jonathan Safran Foer",
-      "length": 325,
-      "id": 57
-    },
-    {
-      "text": "Sono cresciuto in mezzo ai libri, facendomi amici invisibili tra le pagine polverose di cui ho ancora l'odore sulle mani..",
-      "source": "Carlos Ruiz",
-      "length": 122,
-      "id": 58
-    },
-    {
-      "text": "La bellezza non è che una promessa di felicità..",
-      "source": "Stendhal",
-      "length": 48,
-      "id": 59
     },
     {
       "text": "Ecco il mio segreto. È molto semplice: si vede solo con il cuore. L'essenziale è invisibile agli occhi.",
@@ -458,9 +398,9 @@
       "id": 75
     },
     {
-      "text": "essere assolutamente ridicoli che assolutamente noiosi.",
+      "text": "L'imperfezione è bellezza, la follia è genio ed è meglio essere assolutamente ridicoli che assolutamente noiosi.",
       "source": "Marilyn Monroe",
-      "length": 55,
+      "length": 112,
       "id": 76
     },
     {
@@ -710,9 +650,9 @@
       "id": 118
     },
     {
-      "text": "Tu sei come un colibrì perché come il colibrì metti tutta la tua energia nel restare fermo. Settanta battiti d'ali al secondo per rimanere già dove sei. Riesci a fermarti nel mondo e nel tempo, riesci fermare il mondo è il tempo intorno a te, certe volte riesci addirittura anche a risalirlo, il tempo, e a ritrovare quello perduto, così come il colibrì è capace di volare all'indietro.",
+      "text": "Tu sei come un colibrì perché come il colibrì metti tutta la tua energia nel restare fermo. Settanta battiti d'ali al secondo per rimanere già dove sei. Riesci a fermare il mondo e il tempo intorno a te, certe volte riesci addirittura anche a risalirlo, il tempo, e a ritrovare quello perduto, così come il colibrì è capace di volare all'indietro.",
       "source": "Sandro Veronesi, Il colibrì",
-      "length": 386,
+      "length": 347,
       "id": 119
     },
     {
@@ -722,9 +662,9 @@
       "id": 120
     },
     {
-      "text": "E' davvero strano il sistema economico da cui ci si aspetta oggi la salvezza del mondo! Nessuno fabbrica più nulla con le proprie mani, nessuno s’ingegna più a fare una pentola, uno zufolo o a inventare un carretto; l’idea più brillante che si possa avere quella di andare in qualche parte della terra a comprare qualcosa da rivendere altrove, con profitto.",
+      "text": "E' davvero strano il sistema economico da cui ci si aspetta oggi la salvezza del mondo! Nessuno fabbrica più nulla con le proprie mani, nessuno s’ingegna più a fare una pentola, uno zufolo o a inventare un carretto; l’idea più brillante che si possa avere è quella di andare in qualche parte della terra a comprare qualcosa da rivendere altrove, con profitto.",
       "source": "Tiziano Terzani",
-      "length": 357,
+      "length": 359,
       "id": 121
     },
     {
@@ -846,6 +786,66 @@
       "source": "Il gattopardo",
       "length": 148,
       "id": 141
+    },
+    {
+      "text": "Dove posso mai aver letto di quel condannato a morte che, un'ora prima dell'esecuzione, dice o pensa che se potesse vivere in cima a uno scoglio, su una piattaforma così stretta da poterci tenere soltanto i due piedi, con intorno l'abisso, l'oceano, la tenebra eterna, la solitudine eterna e l'eterna procella, e rimanersene immobile su quello spazio di un metro quadrato per tutta la vita, per mille anni, per l'eternità, ebbene, preferirebbe vivere così piuttosto che morire in quell'istante? Pur di vivere, vivere, vivere! Vivere in qualunque modo, ma vivere!... Che verità, Signore Iddio, che verità! L'uomo è un vigliacco! Ed è un vigliacco chi, per questo, lo chiama vigliacco.",
+      "source": "Delitto e castigo",
+      "length": 683,
+      "id": 142
+    },
+    {
+      "text": "Il mozzicone di candela già da un pezzo si stava spegnendo nel candeliere storto, e illuminava con la sua luce fioca, in quella misera stanza, l'assassino e la peccatrice, stranamente riuniti nella lettura del libro eterno.",
+      "source": "Delitto e castigo",
+      "length": 223,
+      "id": 143
+    },
+    {
+      "text": "Eccoli qui: vanno e vengono su e giù per la strada, e sì che ciascuno di loro, per la sua stessa natura, è un mascalzone e un bandito; o, peggio ancora, un idiota! Ma se non mandassero me ai lavori forzati, tutti quanti si infurierebbero, pieni di nobile sdegno! Oh, come li odio!",
+      "source": "Delitto e castigo",
+      "length": 280,
+      "id": 144
+    },
+    {
+      "text": "Ho sempre visto, osservando la natura umana, che l'uomo il quale abbia buone ragioni per credere in se stesso, non si pavoneggia mai davanti agli altri per indurli a credere in lui.",
+      "source": "David Copperfield - Charles Dickens",
+      "length": 181,
+      "id": 145
+    },
+    {
+      "text": "La più nobile come la più bassa forma di critica sono una sorta di autobiografia.",
+      "source": "Dorian Gray",
+      "length": 81,
+      "id": 146
+    },
+    {
+      "text": "L'inventiva, bisogna ammetterlo con umiltà, non consiste nel creare dal vuoto, bensì dal caos.",
+      "source": "Frankenstein",
+      "length": 94,
+      "id": 147
+    },
+    {
+      "text": "Una grassona sfiatata, dall'aria sconfitta, con una tuta sporca, che arrancava al nostro fianco, sentì quello che stava dicendo Miss Pefko. Si girò a esaminare il dottor Breed, lanciandogli un'occhiata di impotente rimprovero. Lei odiava la gente che pensava troppo. In quel momento quella donna mi colpì come la degna rappresentante di quasi tutta l'umanità.",
+      "source": "Ghiaccio-Nove - Kurt Vonnegut",
+      "length": 359,
+      "id": 148
+    },
+    {
+      "text": "Quello che avevo visto, naturalmente, era il rito bokononista del boko-maru, ovvero la fusione delle coscienze. Noi bokononisti crediamo che sia impossibile stare piede-a-piede con una persona senza amarla, a patto che i piedi di entrambe le parti siano puliti e ben curati.",
+      "source": "Ghiaccio-Nove - Kurt Vonnegut",
+      "length": 274,
+      "id": 149
+    },
+    {
+      "text": "L’ozio rende lente le ore e veloci gli anni. L’operosità rapide le ore e lenti gli anni.",
+      "source": "Il mestiere di vivere - Cesare Pavese",
+      "length": 88,
+      "id": 150
+    },
+    {
+      "text": "Date una compagnia al solitario e parlerà più di chiunque.",
+      "source": "Il mestiere di vivere - Cesare Pavese",
+      "length": 58,
+      "id": 151
     }
   ]
 }

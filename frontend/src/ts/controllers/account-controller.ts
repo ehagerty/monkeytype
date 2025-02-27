@@ -3,8 +3,8 @@ import * as Notifications from "../elements/notifications";
 import Config, * as UpdateConfig from "../config";
 import * as AccountButton from "../elements/account-button";
 import * as Misc from "../utils/misc";
+import * as JSONData from "../utils/json-data";
 import * as Settings from "../pages/settings";
-import * as AllTimeStats from "../account/all-time-stats";
 import * as DB from "../db";
 import * as TestLogic from "../test/test-logic";
 import * as Loader from "../elements/loader";
@@ -12,15 +12,18 @@ import * as PageTransition from "../states/page-transition";
 import * as ActivePage from "../states/active-page";
 import * as LoadingPage from "../pages/loading";
 import * as LoginPage from "../pages/login";
-import * as ResultFilters from "../account/result-filters";
+import * as ResultFilters from "../elements/account/result-filters";
 import * as TagController from "./tag-controller";
-import * as RegisterCaptchaPopup from "../popups/register-captcha-popup";
+import * as RegisterCaptchaModal from "../modals/register-captcha";
+import * as LastSignedOutResultModal from "../modals/last-signed-out-result";
 import * as URLHandler from "../utils/url-handler";
 import * as Account from "../pages/account";
 import * as Alerts from "../elements/alerts";
+import * as AccountSettings from "../pages/account-settings";
+import { getAllFunboxes } from "@monkeytype/funbox";
 import {
-  EmailAuthProvider,
   GoogleAuthProvider,
+  GithubAuthProvider,
   browserSessionPersistence,
   browserLocalPersistence,
   createUserWithEmailAndPassword,
@@ -29,25 +32,26 @@ import {
   setPersistence,
   updateProfile,
   linkWithPopup,
-  linkWithCredential,
-  reauthenticateWithPopup,
   getAdditionalUserInfo,
   User as UserType,
   Unsubscribe,
+  AuthProvider,
 } from "firebase/auth";
-import { Auth } from "../firebase";
+import { Auth, getAuthenticatedUser, isAuthenticated } from "../firebase";
 import { dispatch as dispatchSignUpEvent } from "../observables/google-sign-up-event";
 import {
   hideFavoriteQuoteLength,
   showFavoriteQuoteLength,
 } from "../test/test-config";
-import { update as updateTagsCommands } from "../commandline/lists/tags";
 import * as ConnectionState from "../states/connection";
 import { navigate } from "./route-controller";
-
-let signedOutThisSession = false;
+import { FirebaseError } from "firebase/app";
+import * as PSA from "../elements/psa";
+import defaultResultFilters from "../constants/default-result-filters";
+import { getActiveFunboxesWithFunction } from "../test/funbox/list";
 
 export const gmailProvider = new GoogleAuthProvider();
+export const githubProvider = new GithubAuthProvider();
 
 async function sendVerificationEmail(): Promise<void> {
   if (Auth === undefined) {
@@ -58,11 +62,13 @@ async function sendVerificationEmail(): Promise<void> {
   }
 
   Loader.show();
+  $(".sendVerificationEmail").prop("disabled", true);
   const result = await Ape.users.verificationEmail();
+  $(".sendVerificationEmail").prop("disabled", false);
   if (result.status !== 200) {
     Loader.hide();
     Notifications.add(
-      "Failed to request verification email: " + result.message,
+      "Failed to request verification email: " + result.body.message,
       -1
     );
   } else {
@@ -83,28 +89,33 @@ async function getDataAndInit(): Promise<boolean> {
     await LoadingPage.showBar();
     await DB.initSnapshot();
   } catch (error) {
-    const e = error as { message: string; responseCode: number };
+    console.error(error);
     AccountButton.loading(false);
-    if (e.responseCode === 429) {
-      Notifications.add(
-        "Doing so will save you bandwidth, make the next test be ready faster and will not sign you out (which could mean your new personal best would not save to your account).",
-        0,
-        {
-          duration: 0,
-        }
-      );
-      Notifications.add(
-        "You will run into this error if you refresh the website to restart the test. It is NOT recommended to do that. Instead, use tab + enter or just tab (with quick tab mode enabled) to restart the test.",
-        0,
-        {
-          duration: 0,
-        }
-      );
-    }
-    const msg = e.message || e;
-    Notifications.add("Failed to get user data: " + msg, -1);
+    LoginPage.enableInputs();
+    $("header nav .view-account").css("opacity", 1);
+    if (error instanceof DB.SnapshotInitError) {
+      if (error.responseCode === 429) {
+        Notifications.add(
+          "Doing so will save you bandwidth, make the next test be ready faster and will not sign you out (which could mean your new personal best would not save to your account).",
+          0,
+          {
+            duration: 0,
+          }
+        );
+        Notifications.add(
+          "You will run into this error if you refresh the website to restart the test. It is NOT recommended to do that. Instead, use tab + enter or just tab (with quick tab mode enabled) to restart the test.",
+          0,
+          {
+            duration: 0,
+          }
+        );
+      }
 
-    $("#top #menu .account").css("opacity", 1);
+      Notifications.add("Failed to get user data: " + error.message, -1);
+    } else {
+      const message = Misc.createErrorMessage(error, "Failed to get user data");
+      Notifications.add(message, -1);
+    }
     return false;
   }
   if (ActivePage.get() === "loading") {
@@ -113,25 +124,26 @@ async function getDataAndInit(): Promise<boolean> {
     LoadingPage.updateBar(45);
   }
   LoadingPage.updateText("Applying settings...");
-  const snapshot = DB.getSnapshot() as MonkeyTypes.Snapshot;
-  $("#menu .textButton.account > .text").text(snapshot.name);
+  const snapshot = DB.getSnapshot() as DB.Snapshot;
+  AccountButton.update(snapshot);
+  Alerts.setNotificationBubbleVisible(snapshot.inboxUnreadSize > 0);
   showFavoriteQuoteLength();
 
   ResultFilters.loadTags(snapshot.tags);
 
-  Promise.all([Misc.getLanguageList(), Misc.getFunboxList()])
+  Promise.all([JSONData.getLanguageList(), getAllFunboxes()])
     .then((values) => {
       const [languages, funboxes] = values;
       languages.forEach((language) => {
-        ResultFilters.defaultResultFilters.language[language] = true;
+        defaultResultFilters.language[language] = true;
       });
       funboxes.forEach((funbox) => {
-        ResultFilters.defaultResultFilters.funbox[funbox.name] = true;
+        defaultResultFilters.funbox[funbox.name] = true;
       });
       // filters = defaultResultFilters;
-      ResultFilters.load();
+      void ResultFilters.load();
     })
-    .catch((e) => {
+    .catch((e: unknown) => {
       console.log(
         Misc.createErrorMessage(
           e,
@@ -141,7 +153,7 @@ async function getDataAndInit(): Promise<boolean> {
     });
 
   if (snapshot.needsToChangeName) {
-    Notifications.addBanner(
+    Notifications.addPSA(
       "You need to update your account name. <a class='openNameChange'>Click here</a> to change it and learn more about why.",
       -1,
       undefined,
@@ -154,18 +166,19 @@ async function getDataAndInit(): Promise<boolean> {
   const areConfigsEqual =
     JSON.stringify(Config) === JSON.stringify(snapshot.config);
 
-  if (
-    snapshot.config &&
-    (!UpdateConfig.localStorageConfig || !areConfigsEqual)
-  ) {
+  if (Config === undefined || !areConfigsEqual) {
     console.log(
       "no local config or local and db configs are different - applying db"
     );
-    UpdateConfig.apply(snapshot.config);
+    await UpdateConfig.apply(snapshot.config);
     UpdateConfig.saveFullConfigToLocalStorage(true);
+
+    //funboxes might be different and they wont activate on the account page
+    for (const fb of getActiveFunboxesWithFunction("applyGlobalCSS")) {
+      fb.functions.applyGlobalCSS();
+    }
   }
   AccountButton.loading(false);
-  updateTagsCommands();
   TagController.loadActiveFromLocalStorage();
   if (window.location.pathname === "/account") {
     LoadingPage.updateBar(90);
@@ -179,17 +192,14 @@ async function getDataAndInit(): Promise<boolean> {
   return true;
 }
 
-export async function loadUser(user: UserType): Promise<void> {
+export async function loadUser(_user: UserType): Promise<void> {
   // User is signed in.
   PageTransition.set(false);
   AccountButton.loading(true);
-  if ((await getDataAndInit()) === false) {
+  if (!(await getDataAndInit())) {
     signOut();
   }
-  const { discordId, discordAvatar, xp, inboxUnreadSize } =
-    DB.getSnapshot() as MonkeyTypes.Snapshot;
-  AccountButton.update(xp, discordId, discordAvatar);
-  Alerts.setNotificationBubbleVisible(inboxUnreadSize > 0);
+
   // var displayName = user.displayName;
   // var email = user.email;
   // var emailVerified = user.emailVerified;
@@ -199,105 +209,63 @@ export async function loadUser(user: UserType): Promise<void> {
   // var providerData = user.providerData;
   LoginPage.hidePreloader();
 
-  $("#top .signInOut .icon").html(`<i class="fas fa-fw fa-sign-out-alt"></i>`);
-
   // showFavouriteThemesAtTheTop();
 
-  if (TestLogic.notSignedInLastResult !== null && !signedOutThisSession) {
-    TestLogic.setNotSignedInUid(user.uid);
-
-    const response = await Ape.results.save(TestLogic.notSignedInLastResult);
-
-    if (response.status !== 200) {
-      return Notifications.add(
-        "Failed to save last result: " + response.message,
-        -1
-      );
-    }
-
-    TestLogic.clearNotSignedInResult();
-    Notifications.add("Last test result saved", 1);
+  if (TestLogic.notSignedInLastResult !== null) {
+    LastSignedOutResultModal.show();
   }
 }
 
-let authListener: Unsubscribe;
-
-// eslint-disable-next-line no-constant-condition
-if (Auth && ConnectionState.get()) {
-  authListener = Auth?.onAuthStateChanged(async function (user) {
-    // await UpdateConfig.loadPromise;
-    const search = window.location.search;
-    const hash = window.location.hash;
-    console.log(`auth state changed, user ${user ? true : false}`);
+async function readyFunction(
+  authInitialisedAndConnected: boolean,
+  user: UserType | null
+): Promise<void> {
+  const search = window.location.search;
+  const hash = window.location.hash;
+  console.debug(`account controller ready`);
+  if (authInitialisedAndConnected) {
+    void PSA.show();
+    console.debug(`auth state changed, user ${user ? true : false}`);
     console.debug(user);
     if (user) {
-      $("#top .signInOut .icon").html(
-        `<i class="fas fa-fw fa-sign-out-alt"></i>`
-      );
       await loadUser(user);
     } else {
-      $("#top .signInOut .icon").html(`<i class="far fa-fw fa-user"></i>`);
       if (window.location.pathname === "/account") {
         window.history.replaceState("", "", "/login");
       }
       PageTransition.set(false);
-    }
-    if (!user) {
       navigate();
     }
-
-    URLHandler.loadCustomThemeFromUrl(search);
-    URLHandler.loadTestSettingsFromUrl(search);
-    URLHandler.linkDiscord(hash);
-
-    if (/challenge_.+/g.test(window.location.pathname)) {
-      Notifications.add(
-        "Challenge links temporarily disabled. Please use the command line to load the challenge manually",
-        0,
-        {
-          duration: 7,
-        }
-      );
-      return;
-      // Notifications.add("Loading challenge", 0);
-      // let challengeName = window.location.pathname.split("_")[1];
-      // setTimeout(() => {
-      //   ChallengeController.setup(challengeName);
-      // }, 1000);
-    }
-  });
-} else {
-  $("#menu .signInOut").addClass("hidden");
-
-  $("document").ready(async () => {
-    // await UpdateConfig.loadPromise;
-    const search = window.location.search;
-    const hash = window.location.hash;
-    $("#top .signInOut .icon").html(`<i class="far fa-fw fa-user"></i>`);
+  } else {
+    console.debug(`auth not initialised or not connected`);
     if (window.location.pathname === "/account") {
       window.history.replaceState("", "", "/login");
     }
     PageTransition.set(false);
     navigate();
+  }
 
-    URLHandler.loadCustomThemeFromUrl(search);
-    URLHandler.loadTestSettingsFromUrl(search);
-    URLHandler.linkDiscord(hash);
+  URLHandler.loadCustomThemeFromUrl(search);
+  URLHandler.loadTestSettingsFromUrl(search);
+  URLHandler.loadChallengeFromUrl(search);
+  void URLHandler.linkDiscord(hash);
 
-    if (/challenge_.+/g.test(window.location.pathname)) {
-      Notifications.add(
-        "Challenge links temporarily disabled. Please use the command line to load the challenge manually",
-        0,
-        {
-          duration: 7,
-        }
-      );
-      return;
-    }
+  AccountSettings.updateUI();
+}
+
+let disableAuthListener: Unsubscribe;
+
+if (Auth && ConnectionState.get()) {
+  disableAuthListener = Auth?.onAuthStateChanged(function (user) {
+    void readyFunction(true, user);
+  });
+} else {
+  $((): void => {
+    void readyFunction(false, null);
   });
 }
 
-async function signIn(): Promise<void> {
+export async function signIn(email: string, password: string): Promise<void> {
   if (Auth === undefined) {
     Notifications.add("Authentication uninitialized", -1);
     return;
@@ -309,24 +277,22 @@ async function signIn(): Promise<void> {
     return;
   }
 
-  authListener();
+  disableAuthListener();
   LoginPage.showPreloader();
   LoginPage.disableInputs();
   LoginPage.disableSignUpButton();
-  LoginPage.disableSignInButton();
-  const email = ($(".pageLogin .login input")[0] as HTMLInputElement).value;
-  const password = ($(".pageLogin .login input")[1] as HTMLInputElement).value;
 
   if (email === "" || password === "") {
     Notifications.add("Please fill in all fields", 0);
     LoginPage.hidePreloader();
     LoginPage.enableInputs();
     LoginPage.enableSignUpButton();
-    LoginPage.enableSignInButton();
     return;
   }
 
-  const persistence = $(".pageLogin .login #rememberMe input").prop("checked")
+  const persistence = ($(".pageLogin .login #rememberMe input").prop(
+    "checked"
+  ) as boolean)
     ? browserLocalPersistence
     : browserSessionPersistence;
 
@@ -335,25 +301,33 @@ async function signIn(): Promise<void> {
     .then(async (e) => {
       await loadUser(e.user);
     })
-    .catch(function (error) {
-      let message = error.message;
-      if (error.code === "auth/wrong-password") {
-        message = "Incorrect password";
-      } else if (error.code === "auth/user-not-found") {
-        message = "User not found";
-      } else if (error.code === "auth/invalid-email") {
-        message =
-          "Invalid email format (make sure you are using your email to login - not your username)";
+    .catch(function (error: unknown) {
+      console.error(error);
+      let message = Misc.createErrorMessage(
+        error,
+        "Failed to sign in with email and password"
+      );
+      if (error instanceof FirebaseError) {
+        if (error.code === "auth/wrong-password") {
+          message = "Incorrect password";
+        } else if (error.code === "auth/user-not-found") {
+          message = "User not found";
+        } else if (error.code === "auth/invalid-email") {
+          message =
+            "Invalid email format (make sure you are using your email to login - not your username)";
+        } else if (error.code === "auth/invalid-credential") {
+          message =
+            "Email/password is incorrect or your account does not have password authentication enabled.";
+        }
       }
       Notifications.add(message, -1);
       LoginPage.hidePreloader();
       LoginPage.enableInputs();
-      LoginPage.enableSignInButton();
       LoginPage.updateSignupButton();
     });
 }
 
-async function signInWithGoogle(): Promise<void> {
+async function signInWithProvider(provider: AuthProvider): Promise<void> {
   if (Auth === undefined) {
     Notifications.add("Authentication uninitialized", -1, {
       duration: 3,
@@ -370,14 +344,15 @@ async function signInWithGoogle(): Promise<void> {
   LoginPage.showPreloader();
   LoginPage.disableInputs();
   LoginPage.disableSignUpButton();
-  LoginPage.disableSignInButton();
-  authListener();
-  const persistence = $(".pageLogin .login #rememberMe input").prop("checked")
+  disableAuthListener();
+  const persistence = ($(".pageLogin .login #rememberMe input").prop(
+    "checked"
+  ) as boolean)
     ? browserLocalPersistence
     : browserSessionPersistence;
 
   await setPersistence(Auth, persistence);
-  signInWithPopup(Auth, gmailProvider)
+  signInWithPopup(Auth, provider)
     .then(async (signedInUser) => {
       if (getAdditionalUserInfo(signedInUser)?.isNewUser) {
         dispatchSignUpEvent(signedInUser, true);
@@ -385,54 +360,73 @@ async function signInWithGoogle(): Promise<void> {
         await loadUser(signedInUser.user);
       }
     })
-    .catch((error) => {
-      let message = error.message;
-      if (error.code === "auth/wrong-password") {
-        message = "Incorrect password";
-      } else if (error.code === "auth/user-not-found") {
-        message = "User not found";
-      } else if (error.code === "auth/invalid-email") {
-        message =
-          "Invalid email format (make sure you are using your email to login - not your username)";
-      } else if (error.code === "auth/popup-closed-by-user") {
-        message = "Popup closed by user";
+    .catch((error: unknown) => {
+      console.log(error);
+      let message = Misc.createErrorMessage(
+        error,
+        "Failed to sign in with popup"
+      );
+      if (error instanceof FirebaseError) {
+        if (error.code === "auth/wrong-password") {
+          message = "Incorrect password";
+        } else if (error.code === "auth/user-not-found") {
+          message = "User not found";
+        } else if (error.code === "auth/invalid-email") {
+          message =
+            "Invalid email format (make sure you are using your email to login - not your username)";
+        } else if (error.code === "auth/popup-closed-by-user") {
+          message = "";
+          // message = "Popup closed by user";
+          // return;
+        } else if (error.code === "auth/popup-blocked") {
+          message =
+            "Sign in popup was blocked by the browser. Check the address bar for a blocked popup icon, or update your browser settings to allow popups.";
+        } else if (error.code === "auth/user-cancelled") {
+          message = "";
+          // message = "User refused to sign in";
+          // return;
+        } else if (
+          error.code === "auth/account-exists-with-different-credential"
+        ) {
+          message =
+            "Account already exists, but its using a different authentication method. Try signing in with a different method";
+        }
       }
-      Notifications.add(message, -1);
+      if (message !== "") {
+        Notifications.add(message, -1);
+      }
       LoginPage.hidePreloader();
       LoginPage.enableInputs();
-      LoginPage.enableSignInButton();
       LoginPage.updateSignupButton();
     });
 }
 
-async function addGoogleAuth(): Promise<void> {
-  if (Auth === undefined) {
-    Notifications.add("Authentication uninitialized", -1, {
-      duration: 3,
-    });
-    return;
-  }
-  Loader.show();
-  if (Auth.currentUser === null) return;
-  linkWithPopup(Auth.currentUser, gmailProvider)
-    .then(function () {
-      Loader.hide();
-      Notifications.add("Google authentication added", 1);
-      Settings.updateAuthSections();
-    })
-    .catch(function (error) {
-      Loader.hide();
-      Notifications.add(
-        "Failed to add Google authentication: " + error.message,
-        -1
-      );
-    });
+async function signInWithGoogle(): Promise<void> {
+  return signInWithProvider(gmailProvider);
 }
 
-export async function addPasswordAuth(
-  email: string,
-  password: string
+async function signInWithGitHub(): Promise<void> {
+  return signInWithProvider(githubProvider);
+}
+
+async function addGoogleAuth(): Promise<void> {
+  return addAuthProvider("Google", gmailProvider);
+}
+
+async function addGithubAuth(): Promise<void> {
+  return addAuthProvider("GitHub", githubProvider);
+}
+
+async function addAuthProvider(
+  providerName: string,
+  provider: AuthProvider
 ): Promise<void> {
+  if (!ConnectionState.get()) {
+    Notifications.add("You are offline", 0, {
+      duration: 2,
+    });
+    return;
+  }
   if (Auth === undefined) {
     Notifications.add("Authentication uninitialized", -1, {
       duration: 3,
@@ -440,41 +434,20 @@ export async function addPasswordAuth(
     return;
   }
   Loader.show();
-  const user = Auth.currentUser;
-  if (user === null) return;
-  if (
-    user.providerData.find((provider) => provider.providerId === "google.com")
-  ) {
-    try {
-      await reauthenticateWithPopup(user, gmailProvider);
-    } catch (e) {
+  if (!isAuthenticated()) return;
+  linkWithPopup(getAuthenticatedUser(), provider)
+    .then(function () {
       Loader.hide();
-      const message = Misc.createErrorMessage(e, "Failed to reauthenticate");
-      return Notifications.add(message, -1);
-    }
-  }
-
-  const credential = EmailAuthProvider.credential(email, password);
-  linkWithCredential(user, credential)
-    .then(async function () {
-      Settings.updateAuthSections();
-      const response = await Ape.users.updateEmail(email, user.email as string);
-      Loader.hide();
-      if (response.status !== 200) {
-        return Notifications.add(
-          "Password authentication added but updating the database email failed. This shouldn't happen, please contact support. Error: " +
-            response.message,
-          -1
-        );
-      }
-      Notifications.add("Password authentication added", 1);
+      Notifications.add(`${providerName} authentication added`, 1);
+      AccountSettings.updateUI();
     })
-    .catch(function (error) {
+    .catch(function (error: unknown) {
       Loader.hide();
-      Notifications.add(
-        "Failed to add password authentication: " + error.message,
-        -1
+      const message = Misc.createErrorMessage(
+        error,
+        `Failed to add ${providerName} authentication`
       );
+      Notifications.add(message, -1);
     });
 }
 
@@ -485,26 +458,23 @@ export function signOut(): void {
     });
     return;
   }
-  if (!Auth.currentUser) return;
+  if (!isAuthenticated()) return;
   Auth.signOut()
     .then(function () {
       Notifications.add("Signed out", 0, {
         duration: 2,
       });
-      AllTimeStats.clear();
       Settings.hideAccountSection();
-      AccountButton.update();
+      AccountButton.update(undefined);
       navigate("/login");
       DB.setSnapshot(undefined);
-      $(".pageLogin .button").removeClass("disabled");
-      $(".pageLogin input").prop("disabled", false);
-      $("#top .signInOut .icon").html(`<i class="far fa-fw fa-user"></i>`);
       setTimeout(() => {
         hideFavoriteQuoteLength();
       }, 125);
     })
-    .catch(function (error) {
-      Notifications.add(error.message, -1);
+    .catch(function (error: unknown) {
+      const message = Misc.createErrorMessage(error, `Failed to sign out`);
+      Notifications.add(message, -1);
     });
 }
 
@@ -521,9 +491,9 @@ async function signUp(): Promise<void> {
     });
     return;
   }
-  RegisterCaptchaPopup.show();
-  const captchaToken = await RegisterCaptchaPopup.promise;
-  if (!captchaToken) {
+  RegisterCaptchaModal.show();
+  const captchaToken = await RegisterCaptchaModal.promise;
+  if (captchaToken === undefined || captchaToken === "") {
     Notifications.add("Please complete the captcha", -1);
     return;
   }
@@ -577,7 +547,7 @@ async function signUp(): Promise<void> {
   }
 
   // Force user to use a capital letter, number, special character and reasonable length when setting up an account and changing password
-  if (!Misc.isLocalhost() && !Misc.isPasswordStrong(password)) {
+  if (!Misc.isDevEnvironment() && !Misc.isPasswordStrong(password)) {
     Notifications.add(
       "Password must contain at least one capital letter, number, a special character and must be between 8 and 64 characters long",
       0,
@@ -591,67 +561,45 @@ async function signUp(): Promise<void> {
     return;
   }
 
-  authListener();
+  disableAuthListener();
 
-  let createdAuthUser;
   try {
-    createdAuthUser = await createUserWithEmailAndPassword(
+    const createdAuthUser = await createUserWithEmailAndPassword(
       Auth,
       email,
       password
     );
 
-    const signInResponse = await Ape.users.create(
-      nname,
-      captchaToken,
-      email,
-      createdAuthUser.user.uid
-    );
+    const signInResponse = await Ape.users.create({
+      body: {
+        name: nname,
+        captcha: captchaToken,
+        email,
+        uid: createdAuthUser.user.uid,
+      },
+    });
     if (signInResponse.status !== 200) {
-      throw signInResponse;
+      throw new Error(`Failed to sign in: ${signInResponse.body.message}`);
     }
 
     await updateProfile(createdAuthUser.user, { displayName: nname });
     await sendVerificationEmail();
-    AllTimeStats.clear();
-    $("#menu .textButton.account .text").text(nname);
-    $(".pageLogin .button").removeClass("disabled");
-    $(".pageLogin input").prop("disabled", false);
     LoginPage.hidePreloader();
     await loadUser(createdAuthUser.user);
-    if (TestLogic.notSignedInLastResult !== null) {
-      TestLogic.setNotSignedInUid(createdAuthUser.user.uid);
 
-      const response = await Ape.results.save(TestLogic.notSignedInLastResult);
+    Notifications.add("Account created", 1);
+  } catch (e) {
+    let message = Misc.createErrorMessage(e, "Failed to create account");
 
-      if (response.status === 200) {
-        const result = TestLogic.notSignedInLastResult;
-        DB.saveLocalResult(result);
-        DB.updateLocalStats(
-          1,
-          result.testDuration +
-            result.incompleteTestSeconds -
-            result.afkDuration
+    if (e instanceof Error) {
+      if ("code" in e && e.code === "auth/email-already-in-use") {
+        message = Misc.createErrorMessage(
+          { message: "Email already in use" },
+          "Failed to create account"
         );
       }
     }
-    Notifications.add("Account created", 1);
-  } catch (e) {
-    //make sure to do clean up here
-    if (createdAuthUser) {
-      try {
-        await Ape.users.delete();
-      } catch (e) {
-        // account might already be deleted
-      }
-      try {
-        await createdAuthUser.user.delete();
-      } catch (e) {
-        // account might already be deleted
-      }
-    }
-    console.log(e);
-    const message = Misc.createErrorMessage(e, "Failed to create account");
+
     Notifications.add(message, -1);
     LoginPage.hidePreloader();
     LoginPage.enableInputs();
@@ -661,59 +609,43 @@ async function signUp(): Promise<void> {
   }
 }
 
-$(".pageLogin .login input").keyup((e) => {
-  if (e.key === "Enter") {
-    signIn();
-  }
+$(".pageLogin .login form").on("submit", (e) => {
+  e.preventDefault();
+  const email =
+    ($(".pageLogin .login input")[0] as HTMLInputElement).value ?? "";
+  const password =
+    ($(".pageLogin .login input")[1] as HTMLInputElement).value ?? "";
+  void signIn(email, password);
 });
 
-$(".pageLogin .login .button.signIn").on("click", () => {
-  signIn();
+$(".pageLogin .login button.signInWithGoogle").on("click", () => {
+  void signInWithGoogle();
 });
 
-$(".pageLogin .login .button.signInWithGoogle").on("click", () => {
-  signInWithGoogle();
+$(".pageLogin .login button.signInWithGitHub").on("click", () => {
+  void signInWithGitHub();
 });
 
-// $(".pageLogin .login .button.signInWithGitHub").on("click",(e) => {
-// signInWithGitHub();
-// });
-
-$("#top .signInOut").on("click", () => {
+$("nav .accountButtonAndMenu .menu button.signOut").on("click", () => {
   if (Auth === undefined) {
     Notifications.add("Authentication uninitialized", -1, {
       duration: 3,
     });
     return;
   }
-  if (Auth.currentUser) {
-    signOut();
-    signedOutThisSession = true;
-  } else {
-    navigate("/login");
-  }
+  signOut();
 });
 
-$(".pageLogin .register input").keyup((e) => {
-  if ($(".pageLogin .register .button").hasClass("disabled")) return;
-  if (e.key === "Enter") {
-    signUp();
-  }
+$(".pageLogin .register form").on("submit", (e) => {
+  e.preventDefault();
+  void signUp();
 });
 
-$(".pageLogin .register .button").on("click", () => {
-  if ($(".pageLogin .register .button").hasClass("disabled")) return;
-  signUp();
+$(".pageAccountSettings").on("click", "#addGoogleAuth", () => {
+  void addGoogleAuth();
 });
-
-$(".pageSettings #addGoogleAuth").on("click", async () => {
-  if (!ConnectionState.get()) {
-    Notifications.add("You are offline", 0, {
-      duration: 2,
-    });
-    return;
-  }
-  addGoogleAuth();
+$(".pageAccountSettings").on("click", "#addGithubAuth", () => {
+  void addGithubAuth();
 });
 
 $(".pageAccount").on("click", ".sendVerificationEmail", () => {
@@ -723,5 +655,5 @@ $(".pageAccount").on("click", ".sendVerificationEmail", () => {
     });
     return;
   }
-  sendVerificationEmail();
+  void sendVerificationEmail();
 });

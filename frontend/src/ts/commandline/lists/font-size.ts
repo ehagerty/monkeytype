@@ -1,6 +1,7 @@
 import Config, * as UpdateConfig from "../../config";
+import { Command } from "../types";
 
-const commands: MonkeyTypes.Command[] = [
+const commands: Command[] = [
   {
     id: "changeFontSize",
     display: "Font size...",
@@ -9,8 +10,8 @@ const commands: MonkeyTypes.Command[] = [
     defaultValue: (): string => {
       return Config.fontSize.toString();
     },
-    exec: (input): void => {
-      if (!input) return;
+    exec: ({ input }): void => {
+      if (input === undefined || input === "") return;
       UpdateConfig.setFontSize(parseFloat(input));
     },
   },

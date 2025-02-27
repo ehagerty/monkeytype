@@ -3,32 +3,27 @@ import Ape from "../ape";
 import Page from "./page";
 import * as Notifications from "../elements/notifications";
 import { InputIndicator } from "../elements/input-indicator";
-import * as Skeleton from "../popups/skeleton";
+import * as Skeleton from "../utils/skeleton";
 import * as Misc from "../utils/misc";
 import TypoList from "../utils/typo-list";
+import { z } from "zod";
 
 export function enableSignUpButton(): void {
-  $(".page.pageLogin .register.side .button").removeClass("disabled");
+  $(".page.pageLogin .register.side button").prop("disabled", false);
 }
 
 export function disableSignUpButton(): void {
-  $(".page.pageLogin .register.side .button").addClass("disabled");
-}
-
-export function enableSignInButton(): void {
-  $(".page.pageLogin .login.side .button").removeClass("disabled");
-}
-
-export function disableSignInButton(): void {
-  $(".page.pageLogin .login.side .button").addClass("disabled");
+  $(".page.pageLogin .register.side button").prop("disabled", true);
 }
 
 export function enableInputs(): void {
   $(".pageLogin input").prop("disabled", false);
+  $(".pageLogin button").prop("disabled", false);
 }
 
 export function disableInputs(): void {
   $(".pageLogin input").prop("disabled", true);
+  $(".pageLogin button").prop("disabled", true);
 }
 
 export function showPreloader(): void {
@@ -64,18 +59,20 @@ const checkNameDebounced = debounce(1000, async () => {
     updateSignupButton();
     return;
   }
-  const response = await Ape.users.getNameAvailability(val);
+  const response = await Ape.users.getNameAvailability({
+    params: { name: val },
+  });
 
   if (response.status === 200) {
-    nameIndicator.show("available", response.message);
+    nameIndicator.show("available", response.body.message);
   } else if (response.status === 422) {
-    nameIndicator.show("unavailable", response.message);
+    nameIndicator.show("unavailable", response.body.message);
   } else if (response.status === 409) {
-    nameIndicator.show("taken", response.message);
+    nameIndicator.show("taken", response.body.message);
   } else {
-    nameIndicator.show("unavailable", response.message);
+    nameIndicator.show("unavailable", response.body.message);
     Notifications.add(
-      "Failed to check name availability: " + response.message,
+      "Failed to check name availability: " + response.body.message,
       -1
     );
   }
@@ -85,15 +82,14 @@ const checkNameDebounced = debounce(1000, async () => {
 
 const checkEmail = (): void => {
   const email = $(".page.pageLogin .register.side .emailInput").val() as string;
-  const emailRegex =
-    /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-  const educationRegex = /@.*(education|\.edu$|\.edu\.|\.ac\.|\.sch\.)/i;
+  const educationRegex =
+    /@.*(student|education|school|\.edu$|\.edu\.|\.ac\.|\.sch\.)/i;
 
   const emailHasTypo = TypoList.some((typo) => {
     return email.endsWith(typo);
   });
 
-  if (emailRegex.test(email)) {
+  if (z.string().email().safeParse(email).success) {
     if (emailHasTypo) {
       emailIndicator.show(
         "typo",
@@ -102,13 +98,13 @@ const checkEmail = (): void => {
     } else if (educationRegex.test(email)) {
       emailIndicator.show(
         "edu",
-        "Some education emails will fail to receive our messages. Consider using a personal email address."
+        "Some education emails will fail to receive our messages, or disable the account as soon as you graduate. Consider using a personal email address."
       );
     } else {
       emailIndicator.show("valid");
     }
   } else {
-    emailIndicator.show("invalid");
+    emailIndicator.show("invalid", "Please enter a valid email address.");
   }
 
   updateSignupButton();
@@ -134,7 +130,7 @@ const checkPassword = (): void => {
   ).val() as string;
 
   // Force user to use a capital letter, number, special character and reasonable length when setting up an account and changing password
-  if (!Misc.isLocalhost() && !Misc.isPasswordStrong(password)) {
+  if (!Misc.isDevEnvironment() && !Misc.isPasswordStrong(password)) {
     if (password.length < 8) {
       passwordIndicator.show("short", "Password must be at least 8 characters");
     } else if (password.length > 64) {
@@ -177,7 +173,7 @@ const nameIndicator = new InputIndicator(
       level: -1,
     },
     taken: {
-      icon: "fa-times",
+      icon: "fa-user",
       level: -1,
     },
     checking: {
@@ -266,19 +262,24 @@ $(".page.pageLogin .register.side .usernameInput").on("input", () => {
       ".page.pageLogin .register.side .usernameInput"
     ).val() as string;
     if (val === "") {
-      return nameIndicator.hide();
+      nameIndicator.hide();
+      return;
     } else {
       nameIndicator.show("checking");
-      checkNameDebounced();
+      void checkNameDebounced();
     }
   }, 1);
 });
 
 $(".page.pageLogin .register.side .emailInput").on("input", () => {
-  if (
-    !$(".page.pageLogin .register.side .emailInput").val() &&
-    !$(".page.pageLogin .register.side .verifyEmailInput").val()
-  ) {
+  const emailInputValue = $(
+    ".page.pageLogin .register.side .emailInput"
+  ).val() as string;
+  const verifyInputValue = $(
+    ".page.pageLogin .register.side .verifyEmailInput"
+  ).val() as string;
+
+  if (!emailInputValue && !verifyInputValue) {
     emailIndicator.hide();
     verifyEmailIndicator.hide();
     return;
@@ -288,10 +289,14 @@ $(".page.pageLogin .register.side .emailInput").on("input", () => {
 });
 
 $(".page.pageLogin .register.side .verifyEmailInput").on("input", () => {
-  if (
-    !$(".page.pageLogin .register.side .emailInput").val() &&
-    !$(".page.pageLogin .register.side .verifyEmailInput").val()
-  ) {
+  const emailInputValue = $(
+    ".page.pageLogin .register.side .emailInput"
+  ).val() as string;
+  const verifyInputValue = $(
+    ".page.pageLogin .register.side .verifyEmailInput"
+  ).val() as string;
+
+  if (!emailInputValue && !verifyInputValue) {
     emailIndicator.hide();
     verifyEmailIndicator.hide();
     return;
@@ -300,10 +305,14 @@ $(".page.pageLogin .register.side .verifyEmailInput").on("input", () => {
 });
 
 $(".page.pageLogin .register.side .passwordInput").on("input", () => {
-  if (
-    !$(".page.pageLogin .register.side .passwordInput").val() &&
-    !$(".page.pageLogin .register.side .verifyPasswordInput").val()
-  ) {
+  const passwordInputValue = $(
+    ".page.pageLogin .register.side .passwordInput"
+  ).val() as string;
+  const verifyPasswordInputValue = $(
+    ".page.pageLogin .register.side .verifyPasswordInput"
+  ).val() as string;
+
+  if (!passwordInputValue && !verifyPasswordInputValue) {
     passwordIndicator.hide();
     verifyPasswordIndicator.hide();
     return;
@@ -313,10 +322,14 @@ $(".page.pageLogin .register.side .passwordInput").on("input", () => {
 });
 
 $(".page.pageLogin .register.side .verifyPasswordInput").on("input", () => {
-  if (
-    !$(".page.pageLogin .register.side .passwordInput").val() &&
-    !$(".page.pageLogin .register.side .verifyPasswordInput").val()
-  ) {
+  const passwordInputValue = $(
+    ".page.pageLogin .register.side .passwordInput"
+  ).val() as string;
+  const verifyPasswordInputValue = $(
+    ".page.pageLogin .register.side .verifyPasswordInput"
+  ).val() as string;
+
+  if (!passwordInputValue && !verifyPasswordInputValue) {
     passwordIndicator.hide();
     verifyPasswordIndicator.hide();
     return;
@@ -325,26 +338,25 @@ $(".page.pageLogin .register.side .verifyPasswordInput").on("input", () => {
   checkPasswordsMatch();
 });
 
-export const page = new Page(
-  "login",
-  $(".page.pageLogin"),
-  "/login",
-  async () => {
-    //
-  },
-  async () => {
+export const page = new Page({
+  name: "login",
+  element: $(".page.pageLogin"),
+  path: "/login",
+  afterHide: async (): Promise<void> => {
     $(".pageLogin input").val("");
+    nameIndicator.hide();
+    emailIndicator.hide();
+    verifyEmailIndicator.hide();
+    passwordIndicator.hide();
+    verifyPasswordIndicator.hide();
     Skeleton.remove("pageLogin");
   },
-  async () => {
-    Skeleton.append("pageLogin", "middle");
-    $(".pageLogin .button").removeClass("disabled");
-    $(".pageLogin input").prop("disabled", false);
+  beforeShow: async (): Promise<void> => {
+    Skeleton.append("pageLogin", "main");
+    enableInputs();
+    disableSignUpButton();
   },
-  async () => {
-    //
-  }
-);
+});
 
 $(() => {
   Skeleton.save("pageLogin");

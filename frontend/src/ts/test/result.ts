@@ -1,24 +1,23 @@
-import {
-  Chart,
-  type PluginChartOptions,
-  type ScaleChartOptions,
-} from "chart.js";
+//TODO: use Format
+import { Chart, type PluginChartOptions } from "chart.js";
 import Config from "../config";
 import * as AdController from "../controllers/ad-controller";
 import * as ChartController from "../controllers/chart-controller";
-import QuotesController from "../controllers/quotes-controller";
+import QuotesController, { Quote } from "../controllers/quotes-controller";
 import * as DB from "../db";
-import * as Keymap from "../elements/keymap";
 import * as Loader from "../elements/loader";
 import * as Notifications from "../elements/notifications";
 import * as ThemeColors from "../elements/theme-colors";
-import { Auth } from "../firebase";
-import * as QuoteRatePopup from "../popups/quote-rate-popup";
+import { isAuthenticated } from "../firebase";
+import * as quoteRateModal from "../modals/quote-rate";
 import * as GlarsesMode from "../states/glarses-mode";
 import * as SlowTimer from "../states/slow-timer";
+import * as DateTime from "../utils/date-and-time";
 import * as Misc from "../utils/misc";
+import * as Strings from "../utils/strings";
+import * as Numbers from "@monkeytype/util/numbers";
+import * as Arrays from "../utils/arrays";
 import { get as getTypingSpeedUnit } from "../utils/typing-speed-units";
-import * as FunboxList from "./funbox/funbox-list";
 import * as PbCrown from "./pb-crown";
 import * as TestConfig from "./test-config";
 import * as TestInput from "./test-input";
@@ -26,12 +25,26 @@ import * as TestStats from "./test-stats";
 import * as TestUI from "./test-ui";
 import * as TodayTracker from "./today-tracker";
 import * as ConfigEvent from "../observables/config-event";
-
+import * as Focus from "./focus";
+import * as CustomText from "./custom-text";
+import * as CustomTextState from "./../states/custom-text-name";
+import * as Funbox from "./funbox/funbox";
+import Format from "../utils/format";
 import confetti from "canvas-confetti";
-import type { AnnotationOptions } from "chartjs-plugin-annotation";
+import type {
+  AnnotationOptions,
+  LabelPosition,
+} from "chartjs-plugin-annotation";
 import Ape from "../ape";
+import { CompletedEvent } from "@monkeytype/contracts/schemas/results";
+import {
+  getActiveFunboxes,
+  getFromString,
+  isFunboxActiveWithProperty,
+} from "./funbox/list";
+import { getFunboxesFromString } from "@monkeytype/funbox";
 
-let result: MonkeyTypes.Result<MonkeyTypes.Mode>;
+let result: CompletedEvent;
 let maxChartVal: number;
 
 let useUnsmoothedRaw = false;
@@ -45,9 +58,6 @@ export function toggleUnsmoothedRaw(): void {
 }
 
 let resultAnnotation: AnnotationOptions<"line">[] = [];
-let resultScaleOptions = (
-  ChartController.result.options as ScaleChartOptions<"line" | "scatter">
-).scales;
 
 async function updateGraph(): Promise<void> {
   const typingSpeedUnit = getTypingSpeedUnit(Config.typingSpeedUnit);
@@ -55,16 +65,18 @@ async function updateGraph(): Promise<void> {
 
   for (let i = 1; i <= TestInput.wpmHistory.length; i++) {
     if (TestStats.lastSecondNotRound && i === TestInput.wpmHistory.length) {
-      labels.push(Misc.roundTo2(result.testDuration).toString());
+      labels.push(Numbers.roundTo2(result.testDuration).toString());
     } else {
       labels.push(i.toString());
     }
   }
-  resultScaleOptions["wpm"].title.text = typingSpeedUnit.fullUnitString;
+
+  ChartController.result.getScale("wpm").title.text =
+    typingSpeedUnit.fullUnitString;
 
   const chartData1 = [
     ...TestInput.wpmHistory.map((a) =>
-      Misc.roundTo2(typingSpeedUnit.fromWpm(a))
+      Numbers.roundTo2(typingSpeedUnit.fromWpm(a))
     ),
   ];
 
@@ -72,7 +84,7 @@ async function updateGraph(): Promise<void> {
 
   const chartData2 = [
     ...result.chartData.raw.map((a) =>
-      Misc.roundTo2(typingSpeedUnit.fromWpm(a))
+      Numbers.roundTo2(typingSpeedUnit.fromWpm(a))
     ),
   ];
 
@@ -88,14 +100,14 @@ async function updateGraph(): Promise<void> {
 
   let smoothedRawData = chartData2;
   if (!useUnsmoothedRaw) {
-    smoothedRawData = Misc.smooth(smoothedRawData, 1);
+    smoothedRawData = Arrays.smooth(smoothedRawData, 1);
     smoothedRawData = smoothedRawData.map((a) => Math.round(a));
   }
 
   ChartController.result.data.labels = labels;
-  ChartController.result.data.datasets[0].data = chartData1;
-  ChartController.result.data.datasets[1].data = smoothedRawData;
-  ChartController.result.data.datasets[0].label = Config.typingSpeedUnit;
+  ChartController.result.getDataset("wpm").data = chartData1;
+  ChartController.result.getDataset("wpm").label = Config.typingSpeedUnit;
+  ChartController.result.getDataset("raw").data = smoothedRawData;
 
   maxChartVal = Math.max(
     ...[Math.max(...smoothedRawData), Math.max(...chartData1)]
@@ -105,22 +117,23 @@ async function updateGraph(): Promise<void> {
     const minChartVal = Math.min(
       ...[Math.min(...smoothedRawData), Math.min(...chartData1)]
     );
-    resultScaleOptions["wpm"].min = minChartVal;
-    resultScaleOptions["raw"].min = minChartVal;
+
+    ChartController.result.getScale("wpm").min = minChartVal;
+    ChartController.result.getScale("raw").min = minChartVal;
   } else {
-    resultScaleOptions["wpm"].min = 0;
-    resultScaleOptions["raw"].min = 0;
+    ChartController.result.getScale("wpm").min = 0;
+    ChartController.result.getScale("raw").min = 0;
   }
 
-  ChartController.result.data.datasets[2].data = result.chartData.err;
+  ChartController.result.getDataset("error").data = result.chartData.err;
 
   const fc = await ThemeColors.get("sub");
   if (Config.funbox !== "none") {
     let content = "";
-    for (const f of FunboxList.get(Config.funbox)) {
-      content += f.name;
-      if (f.functions?.getResultContent) {
-        content += "(" + f.functions.getResultContent() + ")";
+    for (const fb of getActiveFunboxes()) {
+      content += fb.name;
+      if (fb.functions?.getResultContent) {
+        content += "(" + fb.functions.getResultContent() + ")";
       }
       content += " ";
     }
@@ -130,7 +143,7 @@ async function updateGraph(): Promise<void> {
       id: "funbox-label",
       type: "line",
       scaleID: "wpm",
-      value: resultScaleOptions["wpm"].min,
+      value: ChartController.result.getScale("wpm").min,
       borderColor: "transparent",
       borderWidth: 1,
       borderDash: [2, 2],
@@ -147,42 +160,48 @@ async function updateGraph(): Promise<void> {
         padding: 3,
         borderRadius: 3,
         position: "start",
-        enabled: true,
+        display: true,
         content: `${content}`,
       },
     });
   }
 
-  resultScaleOptions["wpm"].max = maxChartVal;
-  resultScaleOptions["raw"].max = maxChartVal;
-  resultScaleOptions["error"].max = Math.max(...result.chartData.err);
+  ChartController.result.getScale("wpm").max = maxChartVal;
+  ChartController.result.getScale("raw").max = maxChartVal;
+  ChartController.result.getScale("error").max = Math.max(
+    ...result.chartData.err
+  );
 }
 
 export async function updateGraphPBLine(): Promise<void> {
   const themecolors = await ThemeColors.getAll();
-  const lpb = await DB.getLocalPB(
+  const localPb = await DB.getLocalPB(
     result.mode,
     result.mode2,
     result.punctuation ?? false,
+    result.numbers ?? false,
     result.language,
     result.difficulty,
     result.lazyMode ?? false,
-    result.funbox ?? "none"
+    getFunboxesFromString(result.funbox ?? "none")
   );
-  if (lpb === 0) return;
+  const localPbWpm = localPb?.wpm ?? 0;
+  if (localPbWpm === 0) return;
   const typingSpeedUnit = getTypingSpeedUnit(Config.typingSpeedUnit);
-  const chartlpb = Misc.roundTo2(typingSpeedUnit.fromWpm(lpb)).toFixed(2);
+  const chartlpb = Numbers.roundTo2(
+    typingSpeedUnit.fromWpm(localPbWpm)
+  ).toFixed(2);
   resultAnnotation.push({
     display: true,
     type: "line",
     id: "lpb",
     scaleID: "wpm",
     value: chartlpb,
-    borderColor: themecolors["sub"],
+    borderColor: themecolors.sub,
     borderWidth: 1,
     borderDash: [2, 2],
     label: {
-      backgroundColor: themecolors["sub"],
+      backgroundColor: themecolors.sub,
       font: {
         family: Config.fontFamily.replace(/_/g, " "),
         size: 11,
@@ -190,12 +209,12 @@ export async function updateGraphPBLine(): Promise<void> {
         weight: Chart.defaults.font.weight as string,
         lineHeight: Chart.defaults.font.lineHeight as number,
       },
-      color: themecolors["bg"],
+      color: themecolors.bg,
       padding: 3,
       borderRadius: 3,
       position: "center",
-      enabled: true,
       content: `PB: ${chartlpb}`,
+      display: true,
     },
   });
   const lpbRange = typingSpeedUnit.fromWpm(20);
@@ -205,30 +224,30 @@ export async function updateGraphPBLine(): Promise<void> {
   ) {
     maxChartVal = Math.round(parseFloat(chartlpb) + lpbRange);
   }
-  resultScaleOptions["wpm"].max = maxChartVal;
-  resultScaleOptions["raw"].max = maxChartVal;
+
+  ChartController.result.getScale("wpm").max = maxChartVal;
+  ChartController.result.getScale("raw").max = maxChartVal;
 }
 
 function updateWpmAndAcc(): void {
   let inf = false;
-  const typingSpeedUnit = getTypingSpeedUnit(Config.typingSpeedUnit);
   if (result.wpm >= 1000) {
     inf = true;
   }
 
-  if (Config.alwaysShowDecimalPlaces) {
-    $("#result .stats .wpm .top .text").text(Config.typingSpeedUnit);
-    if (inf) {
-      $("#result .stats .wpm .bottom").text("Infinite");
-    } else {
-      $("#result .stats .wpm .bottom").text(
-        Misc.roundTo2(typingSpeedUnit.fromWpm(result.wpm)).toFixed(2)
-      );
-    }
-    $("#result .stats .raw .bottom").text(
-      Misc.roundTo2(typingSpeedUnit.fromWpm(result.rawWpm)).toFixed(2)
-    );
+  $("#result .stats .wpm .top .text").text(Config.typingSpeedUnit);
 
+  if (inf) {
+    $("#result .stats .wpm .bottom").text("Infinite");
+  } else {
+    $("#result .stats .wpm .bottom").text(Format.typingSpeed(result.wpm));
+  }
+  $("#result .stats .raw .bottom").text(Format.typingSpeed(result.rawWpm));
+  $("#result .stats .acc .bottom").text(
+    result.acc === 100 ? "100%" : Format.accuracy(result.acc)
+  );
+
+  if (Config.alwaysShowDecimalPlaces) {
     if (Config.typingSpeedUnit != "wpm") {
       $("#result .stats .wpm .bottom").attr(
         "aria-label",
@@ -243,66 +262,62 @@ function updateWpmAndAcc(): void {
       $("#result .stats .raw .bottom").removeAttr("aria-label");
     }
 
-    $("#result .stats .acc .bottom").text(
-      result.acc === 100 ? "100%" : Misc.roundTo2(result.acc).toFixed(2) + "%"
-    );
-    let time = Misc.roundTo2(result.testDuration).toFixed(2) + "s";
+    let time = Numbers.roundTo2(result.testDuration).toFixed(2) + "s";
     if (result.testDuration > 61) {
-      time = Misc.secondsToString(Misc.roundTo2(result.testDuration));
+      time = DateTime.secondsToString(Numbers.roundTo2(result.testDuration));
     }
     $("#result .stats .time .bottom .text").text(time);
     // $("#result .stats .acc .bottom").removeAttr("aria-label");
 
     $("#result .stats .acc .bottom").attr(
       "aria-label",
-      `${TestInput.accuracy.correct} correct / ${TestInput.accuracy.incorrect} incorrect`
+      `${TestInput.accuracy.correct} correct\n${TestInput.accuracy.incorrect} incorrect`
     );
   } else {
     //not showing decimal places
-    let wpmHover = typingSpeedUnit.convertWithUnitSuffix(result.wpm);
-    let rawWpmHover = typingSpeedUnit.convertWithUnitSuffix(result.rawWpm);
+    const decimalsAndSuffix = {
+      showDecimalPlaces: true,
+      suffix: ` ${Config.typingSpeedUnit}`,
+    };
+    let wpmHover = Format.typingSpeed(result.wpm, decimalsAndSuffix);
+    let rawWpmHover = Format.typingSpeed(result.rawWpm, decimalsAndSuffix);
+
     if (Config.typingSpeedUnit != "wpm") {
       wpmHover += " (" + result.wpm.toFixed(2) + " wpm)";
       rawWpmHover += " (" + result.rawWpm.toFixed(2) + " wpm)";
     }
 
-    $("#result .stats .wpm .top .text").text(Config.typingSpeedUnit);
     $("#result .stats .wpm .bottom").attr("aria-label", wpmHover);
-    if (inf) {
-      $("#result .stats .wpm .bottom").text("Infinite");
-    } else {
-      $("#result .stats .wpm .bottom").text(
-        Math.round(typingSpeedUnit.fromWpm(result.wpm))
-      );
-    }
-    $("#result .stats .raw .bottom").text(
-      Math.round(typingSpeedUnit.fromWpm(result.rawWpm))
-    );
     $("#result .stats .raw .bottom").attr("aria-label", rawWpmHover);
 
-    $("#result .stats .acc .bottom").text(Math.floor(result.acc) + "%");
-    $("#result .stats .acc .bottom").attr(
-      "aria-label",
-      `${result.acc === 100 ? "100" : Misc.roundTo2(result.acc).toFixed(2)}% (${
-        TestInput.accuracy.correct
-      } correct / ${TestInput.accuracy.incorrect} incorrect)`
-    );
+    $("#result .stats .acc .bottom")
+      .attr(
+        "aria-label",
+        `${
+          result.acc === 100
+            ? "100%"
+            : Format.percentage(result.acc, { showDecimalPlaces: true })
+        }\n${TestInput.accuracy.correct} correct\n${
+          TestInput.accuracy.incorrect
+        } incorrect`
+      )
+      .attr("data-balloon-break", "");
   }
 }
 
 function updateConsistency(): void {
+  $("#result .stats .consistency .bottom").text(
+    Format.percentage(result.consistency)
+  );
   if (Config.alwaysShowDecimalPlaces) {
-    $("#result .stats .consistency .bottom").text(
-      Misc.roundTo2(result.consistency).toFixed(2) + "%"
-    );
     $("#result .stats .consistency .bottom").attr(
       "aria-label",
-      `${result.keyConsistency.toFixed(2)}% key`
+      Format.percentage(result.keyConsistency, {
+        showDecimalPlaces: true,
+        suffix: " key",
+      })
     );
   } else {
-    $("#result .stats .consistency .bottom").text(
-      Math.round(result.consistency) + "%"
-    );
     $("#result .stats .consistency .bottom").attr(
       "aria-label",
       `${result.consistency}% (${result.keyConsistency}% key)`
@@ -311,7 +326,7 @@ function updateConsistency(): void {
 }
 
 function updateTime(): void {
-  const afkSecondsPercent = Misc.roundTo2(
+  const afkSecondsPercent = Numbers.roundTo2(
     (result.afkDuration / result.testDuration) * 100
   );
   $("#result .stats .time .bottom .afk").text("");
@@ -322,21 +337,22 @@ function updateTime(): void {
     "aria-label",
     `${result.afkDuration}s afk ${afkSecondsPercent}%`
   );
+
   if (Config.alwaysShowDecimalPlaces) {
-    let time = Misc.roundTo2(result.testDuration).toFixed(2) + "s";
+    let time = Numbers.roundTo2(result.testDuration).toFixed(2) + "s";
     if (result.testDuration > 61) {
-      time = Misc.secondsToString(Misc.roundTo2(result.testDuration));
+      time = DateTime.secondsToString(Numbers.roundTo2(result.testDuration));
     }
     $("#result .stats .time .bottom .text").text(time);
   } else {
     let time = Math.round(result.testDuration) + "s";
     if (result.testDuration > 61) {
-      time = Misc.secondsToString(Math.round(result.testDuration));
+      time = DateTime.secondsToString(Math.round(result.testDuration));
     }
     $("#result .stats .time .bottom .text").text(time);
     $("#result .stats .time .bottom").attr(
       "aria-label",
-      `${Misc.roundTo2(result.testDuration)}s (${
+      `${Numbers.roundTo2(result.testDuration)}s (${
         result.afkDuration
       }s afk ${afkSecondsPercent}%)`
     );
@@ -359,8 +375,148 @@ function updateKey(): void {
   );
 }
 
-export function showCrown(): void {
+export function showCrown(type: PbCrown.CrownType): void {
   PbCrown.show();
+  PbCrown.update(type);
+}
+
+export function updateCrownText(text: string, wide = false): void {
+  $("#result .stats .wpm .crown").attr("aria-label", text);
+  $("#result .stats .wpm .crown").attr(
+    "data-balloon-length",
+    wide ? "medium" : ""
+  );
+}
+
+export async function updateCrown(dontSave: boolean): Promise<void> {
+  if (Config.mode === "quote" || dontSave) {
+    hideCrown();
+    return;
+  }
+
+  let pbDiff = 0;
+  const canGetPb = await resultCanGetPb();
+
+  console.debug("Result can get PB:", canGetPb.value, canGetPb.reason ?? "");
+
+  if (canGetPb.value) {
+    const localPb = await DB.getLocalPB(
+      Config.mode,
+      result.mode2,
+      Config.punctuation,
+      Config.numbers,
+      Config.language,
+      Config.difficulty,
+      Config.lazyMode,
+      getActiveFunboxes()
+    );
+    const localPbWpm = localPb?.wpm ?? 0;
+    pbDiff = result.wpm - localPbWpm;
+    console.debug("Local PB", localPb, "diff", pbDiff);
+    if (pbDiff <= 0) {
+      hideCrown();
+      console.debug("Hiding crown");
+    } else {
+      //show half crown as the pb is not confirmed by the server
+      console.debug("Showing pending crown");
+      showCrown("pending");
+      updateCrownText(
+        "+" + Format.typingSpeed(pbDiff, { showDecimalPlaces: true })
+      );
+    }
+  } else {
+    const localPb = await DB.getLocalPB(
+      Config.mode,
+      result.mode2,
+      Config.punctuation,
+      Config.numbers,
+      Config.language,
+      Config.difficulty,
+      Config.lazyMode,
+      []
+    );
+    const localPbWpm = localPb?.wpm ?? 0;
+    pbDiff = result.wpm - localPbWpm;
+    console.debug("Local PB", localPb, "diff", pbDiff);
+    if (pbDiff <= 0) {
+      // hideCrown();
+      console.debug("Showing warning crown");
+      showCrown("warning");
+      updateCrownText(
+        `This result is not eligible for a new PB (${canGetPb.reason})`,
+        true
+      );
+    } else {
+      console.debug("Showing ineligible crown");
+      showCrown("ineligible");
+      updateCrownText(
+        `You could've gotten a new PB (+${Format.typingSpeed(pbDiff, {
+          showDecimalPlaces: true,
+        })}), but your config does not allow it (${canGetPb.reason})`,
+        true
+      );
+    }
+  }
+}
+
+export function hideCrown(): void {
+  PbCrown.hide();
+  updateCrownText("");
+}
+
+export function showErrorCrownIfNeeded(): void {
+  if (PbCrown.getCurrentType() !== "pending") return;
+  PbCrown.show();
+  PbCrown.update("error");
+  updateCrownText(
+    `Local PB data is out of sync with the server - please refresh (pb mismatch)`,
+    true
+  );
+}
+
+type CanGetPbObject = {
+  value: boolean;
+  reason?: string;
+};
+
+async function resultCanGetPb(): Promise<CanGetPbObject> {
+  const funboxes = result.funbox?.split("#") ?? [];
+  const funboxObjects = getFromString(result.funbox);
+  const allFunboxesCanGetPb = funboxObjects.every((f) => f?.canGetPb);
+
+  const funboxesOk =
+    result.funbox === "none" || funboxes.length === 0 || allFunboxesCanGetPb;
+  const notUsingStopOnLetter = Config.stopOnError !== "letter";
+  const notBailedOut = !result.bailedOut;
+
+  if (funboxesOk && notUsingStopOnLetter && notBailedOut) {
+    return {
+      value: true,
+    };
+  } else {
+    if (!funboxesOk) {
+      return {
+        value: false,
+        reason: "funbox",
+      };
+    }
+    if (!notUsingStopOnLetter) {
+      return {
+        value: false,
+        reason: "stop on letter",
+      };
+    }
+    if (!notBailedOut) {
+      return {
+        value: false,
+        reason: "bailed out",
+      };
+    }
+    return {
+      value: false,
+      reason: "unknown",
+    };
+  }
 }
 
 export function showConfetti(): void {
@@ -374,14 +530,14 @@ export function showConfetti(): void {
   const duration = Date.now() + 125;
 
   (function f(): void {
-    confetti({
+    void confetti({
       particleCount: 5,
       angle: 60,
       spread: 75,
       origin: { x: 0 },
       colors: colors,
     });
-    confetti({
+    void confetti({
       particleCount: 5,
       angle: 120,
       spread: 75,
@@ -395,32 +551,8 @@ export function showConfetti(): void {
   })();
 }
 
-export function hideCrown(): void {
-  PbCrown.hide();
-  $("#result .stats .wpm .crown").attr("aria-label", "");
-}
-
-export async function updateCrown(): Promise<void> {
-  let pbDiff = 0;
-  const lpb = await DB.getLocalPB(
-    Config.mode,
-    result.mode2,
-    Config.punctuation,
-    Config.language,
-    Config.difficulty,
-    Config.lazyMode,
-    Config.funbox
-  );
-  const typingSpeedUnit = getTypingSpeedUnit(Config.typingSpeedUnit);
-  pbDiff = Math.abs(result.wpm - lpb);
-  $("#result .stats .wpm .crown").attr(
-    "aria-label",
-    "+" + Misc.roundTo2(typingSpeedUnit.fromWpm(pbDiff))
-  );
-}
-
 async function updateTags(dontSave: boolean): Promise<void> {
-  const activeTags: MonkeyTypes.Tag[] = [];
+  const activeTags: DB.SnapshotUserTag[] = [];
   const userTagsCount = DB.getSnapshot()?.tags?.length ?? 0;
   try {
     DB.getSnapshot()?.tags?.forEach((tag) => {
@@ -440,22 +572,14 @@ async function updateTags(dontSave: boolean): Promise<void> {
   } else {
     $("#result .stats .tags .bottom").text("");
   }
-  $("#result .stats .tags .editTagsButton").attr("result-id", "");
+  $("#result .stats .tags .editTagsButton").attr("data-result-id", "");
   $("#result .stats .tags .editTagsButton").attr(
-    "active-tag-ids",
+    "data-active-tag-ids",
     activeTags.map((t) => t._id).join(",")
   );
   $("#result .stats .tags .editTagsButton").addClass("invisible");
 
-  const funboxes = result.funbox?.split("#") ?? [];
-
-  const funboxObjects = await Promise.all(
-    funboxes.map(async (f) => Misc.getFunbox(f))
-  );
-
-  const allFunboxesCanGetPb = funboxObjects.every((f) => f?.canGetPb);
-
-  let annotationSide = "start";
+  let annotationSide: LabelPosition = "start";
   let labelAdjust = 15;
   activeTags.forEach(async (tag) => {
     const tpb = await DB.getLocalTagPB(
@@ -463,6 +587,7 @@ async function updateTags(dontSave: boolean): Promise<void> {
       Config.mode,
       result.mode2,
       Config.punctuation,
+      Config.numbers,
       Config.language,
       Config.difficulty,
       Config.lazyMode
@@ -474,15 +599,16 @@ async function updateTags(dontSave: boolean): Promise<void> {
     if (
       Config.mode !== "quote" &&
       !dontSave &&
-      (result.funbox === "none" || funboxes.length === 0 || allFunboxesCanGetPb)
+      (await resultCanGetPb()).value
     ) {
       if (tpb < result.wpm) {
         //new pb for that tag
-        DB.saveLocalTagPB(
+        await DB.saveLocalTagPB(
           tag._id,
           Config.mode,
           result.mode2,
           Config.punctuation,
+          Config.numbers,
           Config.language,
           Config.difficulty,
           Config.lazyMode,
@@ -496,7 +622,7 @@ async function updateTags(dontSave: boolean): Promise<void> {
         ).removeClass("hidden");
         $(`#result .stats .tags .bottom div[tagid="${tag._id}"]`).attr(
           "aria-label",
-          "+" + Misc.roundTo2(result.wpm - tpb)
+          "+" + Numbers.roundTo2(result.wpm - tpb)
         );
         // console.log("new pb for tag " + tag.display);
       } else {
@@ -507,11 +633,11 @@ async function updateTags(dontSave: boolean): Promise<void> {
           id: "tpb",
           scaleID: "wpm",
           value: typingSpeedUnit.fromWpm(tpb),
-          borderColor: themecolors["sub"],
+          borderColor: themecolors.sub,
           borderWidth: 1,
           borderDash: [2, 2],
           label: {
-            backgroundColor: themecolors["sub"],
+            backgroundColor: themecolors.sub,
             font: {
               family: Config.fontFamily.replace(/_/g, " "),
               size: 11,
@@ -519,13 +645,13 @@ async function updateTags(dontSave: boolean): Promise<void> {
               weight: Chart.defaults.font.weight as string,
               lineHeight: Chart.defaults.font.lineHeight as number,
             },
-            color: themecolors["bg"],
+            color: themecolors.bg,
             padding: 3,
             borderRadius: 3,
             position: annotationSide,
             xAdjust: labelAdjust,
-            enabled: true,
-            content: `${tag.display} PB: ${Misc.roundTo2(
+            display: true,
+            content: `${tag.display} PB: ${Numbers.roundTo2(
               typingSpeedUnit.fromWpm(tpb)
             ).toFixed(2)}`,
           },
@@ -542,7 +668,7 @@ async function updateTags(dontSave: boolean): Promise<void> {
   });
 }
 
-function updateTestType(randomQuote: MonkeyTypes.Quote): void {
+function updateTestType(randomQuote: Quote | null): void {
   let testType = "";
 
   testType += Config.mode;
@@ -552,16 +678,13 @@ function updateTestType(randomQuote: MonkeyTypes.Quote): void {
   } else if (Config.mode === "words") {
     testType += " " + Config.words;
   } else if (Config.mode === "quote") {
-    if (randomQuote.group !== undefined) {
+    if (randomQuote?.group !== undefined) {
       testType += " " + ["short", "medium", "long", "thicc"][randomQuote.group];
     }
   }
-  const ignoresLanguage =
-    FunboxList.get(Config.funbox).find((f) =>
-      f.properties?.includes("ignoresLanguage")
-    ) !== undefined;
+  const ignoresLanguage = isFunboxActiveWithProperty("ignoresLanguage");
   if (Config.mode !== "custom" && !ignoresLanguage) {
-    testType += "<br>" + result.language.replace(/_/g, " ");
+    testType += "<br>" + Strings.getLanguageDisplayString(result.language);
   }
   if (Config.punctuation) {
     testType += "<br>punctuation";
@@ -649,8 +772,15 @@ function updateOther(
   }
 }
 
-export function updateRateQuote(randomQuote: MonkeyTypes.Quote): void {
+export function updateRateQuote(randomQuote: Quote | null): void {
   if (Config.mode === "quote") {
+    if (randomQuote === null) {
+      console.error(
+        "Failed to update quote rating button: randomQuote is null"
+      );
+      return;
+    }
+
     const userqr =
       DB.getSnapshot()?.quoteRatings?.[randomQuote.language]?.[randomQuote.id];
     if (userqr) {
@@ -658,58 +788,71 @@ export function updateRateQuote(randomQuote: MonkeyTypes.Quote): void {
         .removeClass("far")
         .addClass("fas");
     }
-    QuoteRatePopup.getQuoteStats(randomQuote).then((quoteStats) => {
-      $(".pageTest #result #rateQuoteButton .rating").text(
-        quoteStats?.average?.toFixed(1) ?? ""
-      );
-      $(".pageTest #result #rateQuoteButton")
-        .css({ opacity: 0 })
-        .removeClass("hidden")
-        .css({ opacity: 1 });
-    });
+    quoteRateModal
+      .getQuoteStats(randomQuote)
+      .then((quoteStats) => {
+        $(".pageTest #result #rateQuoteButton .rating").text(
+          quoteStats?.average?.toFixed(1) ?? ""
+        );
+      })
+      .catch((e: unknown) => {
+        $(".pageTest #result #rateQuoteButton .rating").text("?");
+      });
+    $(".pageTest #result #rateQuoteButton")
+      .css({ opacity: 0 })
+      .removeClass("hidden")
+      .css({ opacity: 1 });
   }
 }
 
-function updateQuoteFavorite(randomQuote: MonkeyTypes.Quote): void {
+function updateQuoteFavorite(randomQuote: Quote | null): void {
+  const icon = $(".pageTest #result #favoriteQuoteButton .icon");
+
+  if (Config.mode !== "quote" || !isAuthenticated()) {
+    icon.parent().addClass("hidden");
+    return;
+  }
+
+  if (randomQuote === null) {
+    console.error(
+      "Failed to update quote favorite button: randomQuote is null"
+    );
+    return;
+  }
+
   quoteLang = Config.mode === "quote" ? randomQuote.language : "";
   quoteId = Config.mode === "quote" ? randomQuote.id.toString() : "";
 
-  const icon = $(".pageTest #result #favoriteQuoteButton .icon");
-
-  if (Config.mode === "quote" && Auth?.currentUser) {
-    const userFav = QuotesController.isQuoteFavorite(randomQuote);
-
-    icon.removeClass(userFav ? "far" : "fas").addClass(userFav ? "fas" : "far");
-    icon.parent().removeClass("hidden");
-  } else {
-    icon.parent().addClass("hidden");
-  }
+  const userFav = QuotesController.isQuoteFavorite(randomQuote);
+  icon.removeClass(userFav ? "far" : "fas").addClass(userFav ? "fas" : "far");
+  icon.parent().removeClass("hidden");
 }
 
-function updateQuoteSource(randomQuote: MonkeyTypes.Quote): void {
+function updateQuoteSource(randomQuote: Quote | null): void {
   if (Config.mode === "quote") {
     $("#result .stats .source").removeClass("hidden");
-    $("#result .stats .source .bottom").html(randomQuote.source);
+    $("#result .stats .source .bottom").html(
+      randomQuote?.source ?? "Error: Source unknown"
+    );
   } else {
     $("#result .stats .source").addClass("hidden");
   }
 }
 
 export async function update(
-  res: MonkeyTypes.Result<MonkeyTypes.Mode>,
+  res: CompletedEvent,
   difficultyFailed: boolean,
   failReason: string,
   afkDetected: boolean,
   isRepeated: boolean,
   tooShort: boolean,
-  randomQuote: MonkeyTypes.Quote,
+  randomQuote: Quote | null,
   dontSave: boolean
 ): Promise<void> {
-  resultScaleOptions = (
-    ChartController.result.options as ScaleChartOptions<"line" | "scatter">
-  ).scales;
   resultAnnotation = [];
-  result = Object.assign({}, res);
+  result = Misc.deepClone(res);
+  hideCrown();
+  $("#resultWordsHistory .words").empty();
   $("#result #resultWordsHistory").addClass("hidden");
   $("#retrySavingResultButton").addClass("hidden");
   $(".pageTest #result #rateQuoteButton .icon")
@@ -717,11 +860,10 @@ export async function update(
     .addClass("far");
   $(".pageTest #result #rateQuoteButton .rating").text("");
   $(".pageTest #result #rateQuoteButton").addClass("hidden");
-  $("#testModesNotice").css("opacity", 0);
   $("#words").removeClass("blurred");
-  $("#wordsInput").blur();
+  $("#wordsInput").trigger("blur");
   $("#result .stats .time .bottom .afk").text("");
-  if (Auth?.currentUser) {
+  if (isAuthenticated()) {
     $("#result .loginTip").addClass("hidden");
   } else {
     $("#result .loginTip").removeClass("hidden");
@@ -738,6 +880,7 @@ export async function update(
   updateTestType(randomQuote);
   updateQuoteSource(randomQuote);
   updateQuoteFavorite(randomQuote);
+  await updateCrown(dontSave);
   await updateGraph();
   await updateGraphPBLine();
   await updateTags(dontSave);
@@ -746,7 +889,7 @@ export async function update(
   ((ChartController.result.options as PluginChartOptions<"line" | "scatter">)
     .plugins.annotation.annotations as AnnotationOptions<"line">[]) =
     resultAnnotation;
-  ChartController.result.updateColors();
+  void ChartController.result.updateColors();
   ChartController.result.resize();
 
   if (
@@ -759,8 +902,8 @@ export async function update(
   }
 
   if (GlarsesMode.get()) {
-    $("#middle #result .noStressMessage").remove();
-    $("#middle #result").prepend(`
+    $("main #result .noStressMessage").remove();
+    $("main #result").prepend(`
 
       <div class='noStressMessage' style="
         text-align: center;
@@ -772,28 +915,28 @@ export async function update(
       </div>
 
     `);
-    $("#middle #result .stats").addClass("hidden");
-    $("#middle #result .chart").addClass("hidden");
-    $("#middle #result #resultWordsHistory").addClass("hidden");
-    $("#middle #result #resultReplay").addClass("hidden");
-    $("#middle #result .loginTip").addClass("hidden");
-    $("#middle #result #showWordHistoryButton").addClass("hidden");
-    $("#middle #result #watchReplayButton").addClass("hidden");
-    $("#middle #result #saveScreenshotButton").addClass("hidden");
+    $("main #result .stats").addClass("hidden");
+    $("main #result .chart").addClass("hidden");
+    $("main #result #resultWordsHistory").addClass("hidden");
+    $("main #result #resultReplay").addClass("hidden");
+    $("main #result .loginTip").addClass("hidden");
+    $("main #result #showWordHistoryButton").addClass("hidden");
+    $("main #result #watchReplayButton").addClass("hidden");
+    $("main #result #saveScreenshotButton").addClass("hidden");
 
     console.log(
       `Test Completed: ${result.wpm} wpm ${result.acc}% acc ${result.rawWpm} raw ${result.consistency}% consistency`
     );
   } else {
-    $("#middle #result .stats").removeClass("hidden");
-    $("#middle #result .chart").removeClass("hidden");
-    // $("#middle #result #resultWordsHistory").removeClass("hidden");
-    if (!Auth?.currentUser) {
-      $("#middle #result .loginTip").removeClass("hidden");
+    $("main #result .stats").removeClass("hidden");
+    $("main #result .chart").removeClass("hidden");
+    // $("main #result #resultWordsHistory").removeClass("hidden");
+    if (!isAuthenticated()) {
+      $("main #result .loginTip").removeClass("hidden");
     }
-    $("#middle #result #showWordHistoryButton").removeClass("hidden");
-    $("#middle #result #watchReplayButton").removeClass("hidden");
-    $("#middle #result #saveScreenshotButton").removeClass("hidden");
+    $("main #result #showWordHistoryButton").removeClass("hidden");
+    $("main #result #watchReplayButton").removeClass("hidden");
+    $("main #result #saveScreenshotButton").removeClass("hidden");
   }
 
   if (window.scrollY > 0) {
@@ -804,34 +947,101 @@ export async function update(
 
   TestConfig.hide();
 
-  Misc.swapElements(
+  void Misc.swapElements(
     $("#typingTest"),
     $("#result"),
     250,
     async () => {
-      AdController.renderResult();
+      $("#result").trigger("focus");
+      void AdController.renderResult();
       TestUI.setResultCalculating(false);
       $("#words").empty();
       ChartController.result.resize();
 
-      $("#result").trigger("focus");
       window.scrollTo({ top: 0 });
-      $("#testModesNotice").addClass("hidden");
     },
     async () => {
+      Focus.set(false);
       $("#resultExtraButtons").removeClass("hidden").css("opacity", 0).animate(
         {
           opacity: 1,
         },
-        125
+        Misc.applyReducedMotion(125)
       );
-      if (Config.alwaysShowWordsHistory && !GlarsesMode.get()) {
+
+      const canQuickRestart = Misc.canQuickRestart(
+        Config.mode,
+        Config.words,
+        Config.time,
+        CustomText.getData(),
+        CustomTextState.isCustomTextLong() ?? false
+      );
+
+      if (
+        Config.alwaysShowWordsHistory &&
+        canQuickRestart &&
+        !GlarsesMode.get()
+      ) {
         TestUI.toggleResultWords(true);
       }
-      Keymap.hide();
-      AdController.updateTestPageAds(true);
+      AdController.updateFooterAndVerticalAds(true);
+      void Funbox.clear();
     }
   );
+}
+
+export function updateTagsAfterEdit(
+  tagIds: string[],
+  tagPbIds: string[]
+): void {
+  const tagNames: string[] = [];
+
+  if (tagIds.length > 0) {
+    for (const tag of tagIds) {
+      DB.getSnapshot()?.tags?.forEach((snaptag) => {
+        if (tag === snaptag._id) {
+          tagNames.push(snaptag.display);
+        }
+      });
+    }
+  }
+
+  if (tagIds.length === 0) {
+    $(`.pageTest #result .tags .bottom`).html(
+      "<div class='noTags'>no tags</div>"
+    );
+  } else {
+    $(`.pageTest #result .tags .bottom div.noTags`).remove();
+    const currentElements = $(`.pageTest #result .tags .bottom div[tagid]`);
+
+    const checked: string[] = [];
+    currentElements.each((_, element) => {
+      const tagId = $(element).attr("tagid") as string;
+      if (!tagIds.includes(tagId)) {
+        $(element).remove();
+      } else {
+        checked.push(tagId);
+      }
+    });
+
+    let html = "";
+
+    tagIds.forEach((tag, index) => {
+      if (checked.includes(tag)) return;
+      if (tagPbIds.includes(tag)) {
+        html += `<div tagid="${tag}" data-balloon-pos="up">${tagNames[index]}<i class="fas fa-crown"></i></div>`;
+      } else {
+        html += `<div tagid="${tag}">${tagNames[index]}</div>`;
+      }
+    });
+
+    // $(`.pageTest #result .tags .bottom`).html(tagNames.join("<br>"));
+    $(`.pageTest #result .tags .bottom`).append(html);
+    $(`.pageTest #result .tags .top .editTagsButton`).attr(
+      "active-tag-ids",
+      tagIds.join(",")
+    );
+  }
 }
 
 $(".pageTest #favoriteQuoteButton").on("click", async () => {
@@ -847,29 +1057,38 @@ $(".pageTest #favoriteQuoteButton").on("click", async () => {
   if ($button.hasClass("fas")) {
     // Remove from favorites
     Loader.show();
-    const response = await Ape.users.removeQuoteFromFavorites(
-      quoteLang,
-      quoteId
-    );
+    const response = await Ape.users.removeQuoteFromFavorites({
+      body: {
+        language: quoteLang,
+        quoteId,
+      },
+    });
     Loader.hide();
 
-    Notifications.add(response.message, response.status === 200 ? 1 : -1);
+    Notifications.add(response.body.message, response.status === 200 ? 1 : -1);
 
     if (response.status === 200) {
       $button.removeClass("fas").addClass("far");
-      const quoteIndex = dbSnapshot.favoriteQuotes[quoteLang]?.indexOf(quoteId);
-      dbSnapshot.favoriteQuotes[quoteLang]?.splice(quoteIndex, 1);
+      const quoteIndex = dbSnapshot.favoriteQuotes?.[quoteLang]?.indexOf(
+        quoteId
+      ) as number;
+      dbSnapshot.favoriteQuotes?.[quoteLang]?.splice(quoteIndex, 1);
     }
   } else {
     // Add to favorites
     Loader.show();
-    const response = await Ape.users.addQuoteToFavorites(quoteLang, quoteId);
+    const response = await Ape.users.addQuoteToFavorites({
+      body: { language: quoteLang, quoteId },
+    });
     Loader.hide();
 
-    Notifications.add(response.message, response.status === 200 ? 1 : -1);
+    Notifications.add(response.body.message, response.status === 200 ? 1 : -1);
 
     if (response.status === 200) {
       $button.removeClass("far").addClass("fas");
+      if (dbSnapshot.favoriteQuotes === undefined) {
+        dbSnapshot.favoriteQuotes = {};
+      }
       if (!dbSnapshot.favoriteQuotes[quoteLang]) {
         dbSnapshot.favoriteQuotes[quoteLang] = [];
       }
@@ -879,20 +1098,21 @@ $(".pageTest #favoriteQuoteButton").on("click", async () => {
 });
 
 ConfigEvent.subscribe(async (eventKey) => {
-  if (eventKey === "typingSpeedUnit" && TestUI.resultVisible) {
-    resultScaleOptions = (
-      ChartController.result.options as ScaleChartOptions<"line" | "scatter">
-    ).scales;
+  if (
+    ["typingSpeedUnit", "startGraphsAtZero"].includes(eventKey) &&
+    TestUI.resultVisible
+  ) {
     resultAnnotation = [];
 
     updateWpmAndAcc();
     await updateGraph();
     await updateGraphPBLine();
+    void TestUI.applyBurstHeatmap();
 
     ((ChartController.result.options as PluginChartOptions<"line" | "scatter">)
       .plugins.annotation.annotations as AnnotationOptions<"line">[]) =
       resultAnnotation;
-    ChartController.result.updateColors();
+    void ChartController.result.updateColors();
     ChartController.result.resize();
   }
 });

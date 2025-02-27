@@ -14,12 +14,6 @@
       "id": 1
     },
     {
-      "text": "Es ist dem Feind gelungen, die Front in breiter Formation zu durchbrechen. Im Süden hat der Gegner Zossen genommen und stößt auf Stahnsdorf vor. Der Feind operiert jetzt am nördlichen Stadtrand zwischen Frohnau und Pankow und im Osten ist der Feind bis zur Linie Lichtenberg, Mahlsdorf und Kahrlshorst gelangt. Mit dem Angriff Steiners wird das alles in Ordnung kommen. Mein Führer... Steiner... Steiner konnte nicht genügend Kräfte für einen Angriff massieren. Der Angriff Steiners ist nicht erfolgt. Es bleiben im Raum: Keitel, Jodl, Krebs und Burgdorf. Das war ein Befehl! Der Angriff Steiners war ein Befehl! Wer sind Sie, dass Sie es wagen, sich meinem Befehl zu widersetzen? So weit ist es also gekommen? Das Militär hat mich belogen! Jeder hat mich belogen, sogar die SS! Die gesamte Generalität ist nichts als ein Haufen niederträchtiger, treuloser Feiglinge!",
-      "source": "Der Untergang/Downfall",
-      "length": 867,
-      "id": 2
-    },
-    {
       "text": "Das Schönste, was wir erleben können, ist das Geheimnisvolle.",
       "source": "Albert Einstein",
       "length": 61,
@@ -32,7 +26,7 @@
       "id": 4
     },
     {
-      "text": "Die Welt ist viel zu gefährlich, um darin zu leben - nicht wegen der Menschen, die Böses tun, sondern wegen der Menschen, die daneben stehen und sie gewähren lassen.",
+      "text": "Die Welt ist viel zu gefährlich, um darin zu leben - nicht wegen den Menschen, die Böses tun, sondern wegen den Menschen, die daneben stehen und sie gewähren lassen.",
       "source": "Albert Einstein",
       "length": 165,
       "id": 5
@@ -168,12 +162,6 @@
       "source": "Dalai Lama",
       "length": 65,
       "id": 27
-    },
-    {
-      "text": "Die Menschen müssen begreifen, dass sie das gefährlichste Ungeziefer sind, das je die Erde bevölkert hat.",
-      "source": "Friedensreich Hundertwasser",
-      "length": 105,
-      "id": 28
     },
     {
       "text": "Zwei Dinge verleihen der Seele am meisten Kraft: Vertrauen auf die Wahrheit und Vertrauen auf sich selbst.",
@@ -1106,12 +1094,6 @@
       "id": 188
     },
     {
-      "text": "Wenn wir unsere Bestätigung nur im Außen suchen, wenn wir versuchen zu beweisen, dass wir auch wer sind, dann ist es nie genug. Alle äußeren Reichtümer werden niemals das innere Gefühl kompensieren, unzulänglich zu sein. Man kann sich auch unzulänglich fühlen, wenn die eigene Yacht nur 20 Meter lang ist, während die, die direkt neben einem liegt 72 Meter lang ist. Mehr Spielzeuge sind nicht die Lösung, sondern dass wir damit anfangen, anzuerkennen, dass wir wundervolle Wesen sind. Jetzt schon.",
-      "source": "André Loibl - Blockaden Lösen",
-      "length": 498,
-      "id": 189
-    },
-    {
       "text": "Noch kein Fußballer hat mit Nachdenken ein Tor geschossen. Niemand hat ein großartiges Business kreiert, indem er nur darüber nachgedacht hat. Es kommt der Punkt, an dem wir in die Handlung kommen müssen. Und dieser Zeitpunkt ist bei uns allen früher als wir selbst denken.",
       "source": "André Loibl - Blockaden Lösen",
       "length": 273,
@@ -1122,12 +1104,6 @@
       "source": "André Loibl - Blockaden Lösen",
       "length": 377,
       "id": 191
-    },
-    {
-      "text": "Wie kommst Du auf die Idee, du wärst unbedeutender als jemand anders? Wir alle sind gleichwertige Wesen. Und jedes Wesen hat etwas wunderschönes, individuelles zu dieser Welt beizutragen.",
-      "source": "André Loibl - Blockaden Lösen",
-      "length": 187,
-      "id": 192
     },
     {
       "text": "Wenn wir unsere innere Welt verändern und uns von alten Mustern befreien, dann zeigen sich wunderschöne Ergebnisse in der äußeren Welt. Die Ergebnisse, die sich nach einer solchen inneren Transformation zeigen, sind oft viel fantastischer und großartiger, als wir uns das vorher hätten vorstellen können.",
@@ -1182,12 +1158,6 @@
       "source": "Marion Zimmer-Bradley - Herrin der Falken",
       "length": 201,
       "id": 201
-    },
-    {
-      "text": "Noch nie war ihr ein solches Glücksgefühl zuteilgeworden. Die Tränen liefen ihr übers Gesicht. Es störte sie nicht. Sie war Teil von allem, das lebte und atmete, Teil der Sonne und der Felsen. Sogar die Kälte des Gletschers war irgendwie wundervoll, weil sie ihr Bewusstsein für die Wärme der aufgehenden Sonne schärfte.",
-      "source": "Marion Zimmer-Bradley – Herrin der Falken",
-      "length": 320,
-      "id": 202
     },
     {
       "text": "Andererseits war mir Abscheu vor Feigheit anerzogen und nichts war mir schrecklicher, als auch nur mutlos zu erscheinen. Ich kann wohl sagen, ich hätte mich in einen Abgrund hinunterstürzen können, wie die Hunnen in den Geschichtsbüchern, wenn man meinen Mut in Zweifel gezogen hätte. Aber es wäre mehr Stolz und Furcht als Mut gewesen, die mich veranlasst hätten, so zu handeln.",
@@ -1418,7 +1388,7 @@
       "id": 241
     },
     {
-      "text": "Es gibt nichts Mächtigeres als die Liebe der Familie. Doch wenn daraus Wut wird, dann gibt es nichts Gefährlicheres.",
+      "text": "Es gibt nichts Mächtigeres als die Liebe der Familie. Doch wenn daraus Wut wird, dann gibt es nichts gefährlicheres.",
       "source": "Fast and Furious",
       "length": 116,
       "id": 242
@@ -1488,12 +1458,6 @@
       "source": "Batman – The Dark Knight",
       "length": 98,
       "id": 254
-    },
-    {
-      "text": "Nicht gleich auf den Kopf, das verwirrt das Opfer. Dann fühlt er nicht den nächsten Schlag.",
-      "source": "Batman – The Dark Knight",
-      "length": 91,
-      "id": 255
     },
     {
       "text": "Weil es das ist, was nötig ist. Weil die Wahrheit manchmal nicht gut genug ist. Manchmal verdienen die Menschen mehr. Manchmal verdienen die Menschen, dass ihr Vertrauen belohnt wird…",
@@ -2067,7 +2031,7 @@
     },
     {
       "text": "Manche glauben, die Sterne würden oben näher erscheinen. Stimmt nicht. Hier oben erkennt man erst, wie fern sie wirklich sind.",
-      "source": "Unbekannt",
+      "source": "Ally Condie, Reached",
       "length": 126,
       "id": 351
     },
@@ -2168,9 +2132,9 @@
       "id": 369
     },
     {
-      "text": "Wer über seine Gefühle spricht, nimmt diesen Gefühlen ihren Sinn und Zweck. Sobald man versucht, die menschlichen Erfahrungen in Wort zu fassen, degradiert man sie zu einem bloßen Publikumssport. Alles braucht einen Grund und einen Namen.",
+      "text": "Wer über seine Gefühle spricht, nimmt diesen Gefühlen ihren Sinn und Zweck. Sobald man versucht, die menschlichen Erfahrungen in Worte zu fassen, degradiert man sie zu einem bloßen Publikumssport. Alles braucht einen Grund und einen Namen.",
       "source": "Skulduggery Pleasant – Passage der Totenbeschwörer",
-      "length": 238,
+      "length": 239,
       "id": 370
     },
     {
@@ -2240,12 +2204,6 @@
       "id": 381
     },
     {
-      "text": "Der Krieg schult uns die Sinne, weckt in uns den Willen zur Tat, vervollkommnet unsere psychische Konstitution und bringt den Mann dazu sich von jetzt auf gleich Aug in Aug als Mann mit dem Manne zu messen.",
-      "source": "Der Soldat James Ryan",
-      "length": 206,
-      "id": 382
-    },
-    {
       "text": "Meine liebe Mrs. Ryan, es erfüllt mich mit aufrichtiger Freude, Ihnen mitteilen zu können, dass Ihr Sohn, Private James Ryan, wohlauf ist, und sich auf dem Heimweg von den Schlachtfeldern Europas befindet. Laut Meldungen von der Front erfüllte James seine Pflicht mit großem Mut und unerschütterlicher Hingabe, selbst nachdem er von dem tragischen Verlust erfahren hatte, den Ihre Familie in diesem Feldzug zur Befreiung der Welt von Tyrannei und Unterdrückung erlitten hat. Im Namen des Kriegsministers, der United States Army und der Bürger einer dankbaren Nation wünsche ich Ihnen von Herzen Gesundheit, und viele glückliche Jahre, mit Ihrem Sohn James an Ihrer Seite.",
       "source": "Der Soldat James Ryan",
       "length": 671,
@@ -2310,12 +2268,6 @@
       "source": "Misson Impossible – III",
       "length": 76,
       "id": 393
-    },
-    {
-      "text": "Wie immer gilt, sollten sie oder ein Mitglied ihres IMF-Teams gefangen oder getötet werden, wird der Minister jedes Wissen von ihrem Einsatz abstreiten. Dieses Band wird sich innerhalb von fünf Sekunden selbst zerstören. Viel Glück.",
-      "source": "Mission Impossible",
-      "length": 232,
-      "id": 394
     },
     {
       "text": "Es gibt nur eine Person, der ich vertraue und mit der reden Sie gerade.",
@@ -2402,7 +2354,7 @@
       "id": 410
     },
     {
-      "text": "Aber bis dahin kann ich eine Menge falsch machen, wenn nicht sogar eine weltweite Krise auslösen. Fragen sie mal Giordano. Ein falsches Lächeln, eine falsche Referenz, die falsche Kommunikation - und puff! Das 18. Jahrhundert steht in Brand.",
+      "text": "Aber bis dahin kann ich eine Menge falsch machen, wenn nicht sogar eine weltweite Krise auslösen. Fragen Sie mal Giordano. Ein falsches Lächeln, eine falsche Referenz, die falsche Kommunikation - und puff! Das 18. Jahrhundert steht in Brand.",
       "source": "Edelstein Trilogie – Smaragdgrün",
       "length": 241,
       "id": 411
@@ -2666,9 +2618,9 @@
       "id": 455
     },
     {
-      "text": "Mein Name ist Max. Meine Welt ist Feuer und Blut. Früher war ich ein Cop. Ein Vollstrecker auf der Suche nach Gerechtigkeit. Als die Welt zerfiel war jeder von uns auf seine Weise gebrochen. Es war schwer zu sagen wer verrückter war. Ich... oder alle anderen.",
+      "text": "Mein Name ist Max. Meine Welt ist Feuer und Blut. Früher war ich ein Cop. Ein Vollstrecker auf der Suche nach Gerechtigkeit. Als die Welt zerfiel war jeder von uns auf seine Weise gebrochen. Es war schwer zu sagen, wer verrückter war. Ich... oder alle anderen.",
       "source": "Mad Max – Fury Road",
-      "length": 259,
+      "length": 260,
       "id": 456
     },
     {
@@ -2690,7 +2642,7 @@
       "id": 459
     },
     {
-      "text": "Es wäre lächerlich, sich einzubilden, dass sämtliche Bekannten eines Menschen zu hundert Prozent Wesen aus Fleisch und Blut sind. Viele der engsten Freunde, die man hat, bestehen ja nur aus einem Zitat, einem unbedachten Gedanken, während andere aus einem jämmerlichen Körper bestehen, wie Imker, aber von Tausenden fliegender, surrender Gedanken umgeben sind.",
+      "text": "Es wäre lächerlich, sich einzubilden, dass sämtliche Bekannten eines Menschen zu hundert Prozent Wesen aus Fleisch und Blut sind. Viele der engsten Freunde, die man hat, bestehen ja nur aus einem Zitat, einem unbedachten Gedanken, während andere aus einem jämmerlichen Körper bestehen, wie Imker, aber von tausenden fliegender, surrender Gedanken umgeben sind.",
       "source": "Der Mondtrinker",
       "length": 360,
       "id": 460
@@ -2826,12 +2778,6 @@
       "source": "Der Fluch der Dunkelelben – Zwergenblut",
       "length": 215,
       "id": 482
-    },
-    {
-      "text": "Andrew lud sechs Patronen in die Trommel. Er nahm zwar an, dass er mehr als eine kaum brauchen würde, aber man wusste ja nie. Schließlich brachte er sich zum ersten Mal um.",
-      "source": "Die Landkarte der Zeit",
-      "length": 172,
-      "id": 483
     },
     {
       "text": "Ich habe die Erfahrung gemacht, dass ich nicht immer das bekommen kann, was ich gerne möchte. Also habe ich gelernt, immer das zu mögen, was ich bekomme.",
@@ -3068,12 +3014,6 @@
       "id": 522
     },
     {
-      "text": "Es ist keine Schande, etwas nicht zu wissen, aber es ist eine, nichts lernen zu wollen.",
-      "source": "City of Fallen Magic – Mit Feuer und Zinn",
-      "length": 87,
-      "id": 523
-    },
-    {
       "text": "Birka war einst ein reiches Dorf gewesen, bezaubert und außergewöhnlich malerisch gelegen – seine gelben Stroh- und roten Ziegeldächer füllten dicht an dicht einen Talkessel mit steilen, bewaldeten Hängen, die je nach Jahreszeit ihre Farbe änderten. Vor allem im Herbst erfreute der Anblick von Birka das ästhetische Auge und das empfindsame Herz. So war es bis zu dem Zeitpunkt, da die Siedlung ihren Namen änderte.",
       "source": "Geralt-Saga - Der Schwalbenturm",
       "length": 416,
@@ -3200,12 +3140,6 @@
       "id": 545
     },
     {
-      "text": "Meine Gesundheit ist vollkommen. Mein Geist und mein Körper sind in perfekter Balance. Ich bin ein harmonisches Wesen. Die Zellen meines Körpers nehmen den ganzen Tag über das Wohlbefinden auf. Ich entspanne mich und vertraue meinen Selbstheilungskräften. Mit jeder Entscheidung, die ich treffe, werde ich gesünder. Ich bin fähig und bereit meinen Körper zu heilen. Alle Zellen meines Körpers werden mit jedem Atemzug gesünder und vitaler. Ich erhalte meine Gesundheit durch positive Gedanken. Mein Körper ist der Tempel meiner Seele, ich finde Ruhe in mir. Meine Gesundheit wird im Hier und Jetzt zu einem Stadium der vollständigen Heilung gebracht. Jeden Tag lerne ich etwas Wunderbares über meine eigenen Gesundheitsbedürfnisse. Mein Körper ist ausgeglichen, gesund und gedeiht. Ich werde ein langes und gesundes Leben führen. Ich behandle meinen Körper wie einen reinen Tempel. Ich bin bereit, heilende Energie zu erhalten. Ich werde die Qualität meines Lebens verbessern. Ich atme heilende Luft ein und blase alle Negativität aus. Ich bin vollkommen gesund. Ich bin stark und gesund. Mein Körper weiß am besten, was ich brauche und ich gebe ihm das gerne.",
-      "source": "20 Affirmationen zur Selbstheilung 4",
-      "length": 1160,
-      "id": 547
-    },
-    {
       "text": "Ich übernehme die Verantwortung für meine Gesundheit und stelle sie her. Ich bin der lebendige Ausdruck göttlicher Vollkommenheit. Mein heutiges Ziel ist es, jeden Satz positiv und heilend zu formulieren. Ich liebe meinen Körper und sorge gut für ihn. Ich werde auf völlig neue Weise gesund. Mein Körper ist auf die Weisheit des Universums abgestimmt. Ich bin stark. Ich liebe jede Zelle meines Körpers. Ich bin bereit, an meine Fähigkeit zu glauben, Heilung und Glück zu schaffen. Ich habe durch meine Geburt ein Recht auf bedingungslose Gesundheit. Ich bin voller Vertrauen. Mein Körper weiß alles, was er wissen muss, und er hat alle Mittel, um Gesundheit zu erschaffen. Ich genieße strahlende Energie von innen. Mein Leben ist eine Frage der Wahl und genau in dieser Sekunde entscheide ich mich für ein vollständig geheiltes Leben. Ich besitze natürliche, strahlende Heilkraft, die jetzt in mir arbeitet, ohne dass ich daran denke. Mir geht es gut. Ich schaffe eine positive, mentale Einstellung. Liebe kontrolliert mein Leben. Ich höre auf meinen Körper und helfe seinen Bedürfnissen. Ich liebe es, wie mein Geist und mein Körper miteinander kommunizieren, um meine Heilung zu unterstützen. Jeden Tag gebe ich Liebe und danke jedem Teil meines Körpers.",
       "source": "20 Affirmationen zur Selbstheilung 5",
       "length": 1257,
@@ -3222,12 +3156,6 @@
       "source": "Angela Merkel",
       "length": 386,
       "id": 550
-    },
-    {
-      "text": "Steige aus dem Bett, dreh den Swag auf, schaue kurz in den Spiegel, ich sag: \"Whatup?\"",
-      "source": "Money Boy - Dreh den Swag auf",
-      "length": 86,
-      "id": 551
     },
     {
       "text": "Sieh dir diese kleine Karte an. So viel bedeutet sie. Die Vorderseite ist schlicht weiß, dezent, das Firmenlogo in Silber. Die Rückseite enthält alle wichtigen Informationen: Name, Adresse, Telefonnummern, E-Mail-Adresse. Die Schriftart ist etwas kühn, aber nicht aufdringlich. Ein Hauch von Vanille.",
@@ -3372,6 +3300,84 @@
       "source": "Oscar Wilde",
       "length": 124,
       "id": 575
+    },
+    {
+      "text": "Die Welt wird von deinem Beispiel verändert, nicht von deiner Meinung.",
+      "source": "Paulo Coelho",
+      "length": 70,
+      "id": 576
+    },
+    {
+      "text": "Die Einzige Macht, die du auf diesem Planeten hast, ist die Macht deiner Entscheidungen.",
+      "source": "Paulo Coelho",
+      "length": 88,
+      "id": 577
+    },
+    {
+      "text": "Eines Tages wirst du erwachen, und es wird keine Zeit dafür geben, zu machen, was du schon immer machen wolltest. Mach es lieber jetzt.",
+      "source": "Paulo Coelho",
+      "length": 135,
+      "id": 578
+    },
+    {
+      "text": "Auf der Welt gibt es nur deshalb Liebe, weil die Menschen an die Unsterblichkeit glauben. Mit dem Aufhören des Glaubens würde die Liebe vernichtet werden.",
+      "source": "Fjodor Michailowitsch Dostojewski",
+      "length": 154,
+      "id": 579
+    },
+    {
+      "text": "Der Spiegel der Natur ist der klarste Spiegel! Ihn muß man schauen, an ihm sich ergötzen.",
+      "source": "Fjodor Michailowitsch Dostojewski",
+      "length": 89,
+      "id": 580
+    },
+    {
+      "text": "Wenn du einen Menschen richtig kennenlernen und etwas über sein innerstes Wesen in Erfahrung bringen willst, so mach dir nicht erst die Mühe zu analysieren, wie er spricht, schweigt, weint oder von hehren Gedanken ergriffen wird. Du brauchst ihn bloß beim Lachen zu beobachten. Hat er ein gutes Lachen, ist er ein guter Mensch.",
+      "source": "Fjodor Michailowitsch Dostojewski",
+      "length": 327,
+      "id": 581
+    },
+    {
+      "text": "Ein einziges Wort, gesprochen mit Überzeugung in voller Aufrichtigkeit und ohne zu schwanken während man Auge in Auge einander gegenüber steht, sagt bei weitem mehr als einige Dutzend Bogen beschriebenes Papier.",
+      "source": "Fjodor Michailowitsch Dostojewski",
+      "length": 211,
+      "id": 582
+    },
+    {
+      "text": "Es gibt Gesichter, die jedes Mal, wenn sie auftauchen, wieder etwas Neues mitbringen, etwas, das man bis dahin noch nicht an ihnen bemerkt hat, auch wenn man ihnen hundertmal begegnet ist.",
+      "source": "Fjodor Michailowitsch Dostojewski",
+      "length": 188,
+      "id": 583
+    },
+    {
+      "text": "Es ist wahrlich nicht so schwer, jeden beunruhigenden und unziemlichen Gedanken, der sich aufdrängt, wieder loszuwerden und hinwegzutilgen, so dass die vollkommene Stille und Heiterkeit des Gemüts gleich wiederhergestellt wird.",
+      "source": "Marcus Aurelius - Selbstbetrachtung",
+      "length": 227,
+      "id": 584
+    },
+    {
+      "text": "Hippokrates hat viele Krankheiten geheilt, dann ist er selbst an einer Krankheit gestorben. Die Chaldäer weissagten vielen den Tod, dann hat sie selber das Geschick ereilt. Alexander, Pompejus, Cäsar - nachdem sie so manche Stadt von Grund aus zerstört und in der Schlacht so viele Tausende ums Leben gebracht hatten, schieden selbst aus dem Leben. Heraklit, der über den Weltbrand philosophierte, starb selbst an der Wassersucht, den Demokrit brachte das Ungeziefer um, den Sokrates - ein Ungeziefer anderer Art. Kurz, zu einem jeden heißt es einmal: \"Du bist eingestiegen, gefahren, im Hafen eingelaufen: so steige nun aus!\"",
+      "source": "Marcus Aurelius - Selbstbetrachtung",
+      "length": 626,
+      "id": 585
+    },
+    {
+      "text": "Richte dich nicht ein, als solltest du hundert Jahre alt werden. Denn nahe ist vielleicht dein Ende! Aber solang du lebst, solange es in deiner Macht steht - sei gut.",
+      "source": "Marcus Aurelius - Selbstbetrachtung",
+      "length": 166,
+      "id": 586
+    },
+    {
+      "text": "Wenn man nicht herausbringen kann, was in des anderen Seele vorgeht, so ist das schwerlich ein Unglück; aber notwendigerweise unglücklich ist man, wenn man über die Regungen der eigenen Seele im unklaren ist.",
+      "source": "Marcus Aurelius - Selbstbetrachtung",
+      "length": 208,
+      "id": 587
+    },
+    {
+      "text": "Ein Glas auf die Liebe und eines auf das volle Leben. Und eines auf das, was wir nicht halten können. Ein Tor geht auf und ein anderes geht zu. Du bleibst in meinem Herzen, sogar noch dann, wenn es anfängt weh zu tun.",
+      "source": "Patent Ochsner - für immer uf di",
+      "length": 217,
+      "id": 588
     }
   ]
 }
