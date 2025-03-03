@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { debounce } from "throttle-debounce";
-import * as Misc from "../utils/misc";
+// import * as Numbers from "@monkeytype/util/numbers";
 import * as ConfigEvent from "../observables/config-event";
 import * as BannerEvent from "../observables/banner-event";
 import Config from "../config";
@@ -44,9 +45,9 @@ function init(): void {
       return;
     }
     if (choice === "eg") {
-      EG.refreshVisible();
+      void EG.refreshVisible();
     } else {
-      PW.refreshVisible();
+      void PW.refreshVisible();
     }
   }, 60000);
 
@@ -89,10 +90,10 @@ function removeResult(): void {
 }
 
 function updateVerticalMargin(): void {
-  const height = $("#bannerCenter").height() as number;
-  const margin = height + Misc.convertRemToPixels(2) + "px";
-  $("#ad-vertical-left-wrapper").css("margin-top", margin);
-  $("#ad-vertical-right-wrapper").css("margin-top", margin);
+  // const height = $("#bannerCenter").height() as number;
+  // const margin = height + Numbers.convertRemToPixels(2) + "px";
+  // $("#ad-vertical-left-wrapper").css("margin-top", margin);
+  // $("#ad-vertical-right-wrapper").css("margin-top", margin);
 }
 
 function updateBreakpoint(noReinstate = false): void {
@@ -142,7 +143,7 @@ export async function checkAdblock(): Promise<void> {
   return new Promise((resolve) => {
     if (choice === "eg") {
       if (adBlock === undefined) {
-        //@ts-ignore
+        //@ts-expect-error
         if (window.egAdPack === undefined) {
           adBlock = true;
         } else {
@@ -150,7 +151,7 @@ export async function checkAdblock(): Promise<void> {
         }
       }
     } else if (choice === "pw") {
-      //@ts-ignore
+      //@ts-expect-error
       if (window.ramp === undefined) {
         adBlock = true;
       }
@@ -168,15 +169,16 @@ export async function checkCookieblocker(): Promise<void> {
         return;
       }
 
-      //@ts-ignore
+      //@ts-expect-error
       if (window.__tcfapi === undefined) {
         cookieBlocker = true;
         resolve();
         return;
       }
-      //@ts-ignore
+      //@ts-expect-error
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       window.__tcfapi("getTCData", 2, (tcData, success) => {
-        if (success) {
+        if (success as boolean) {
           if (tcData.eventStatus === "cmpuishown") {
             cookieBlocker = true;
           } else {
@@ -247,11 +249,11 @@ export async function renderResult(): Promise<void> {
   if (choice === "eg") {
     EG.renderResult(widerThanBreakpoint);
   } else {
-    PW.renderResult();
+    void PW.renderResult();
   }
 }
 
-export function updateTestPageAds(visible: boolean): void {
+export function updateFooterAndVerticalAds(visible: boolean): void {
   if (visible) {
     $("#ad-vertical-left-wrapper").removeClass("testPage");
     $("#ad-vertical-right-wrapper").removeClass("testPage");
@@ -267,12 +269,14 @@ export function updateTestPageAds(visible: boolean): void {
 
 export function showConsentPopup(): void {
   if (choice === "eg") {
-    //@ts-ignore
+    //@ts-expect-error
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     window.__tcfapi("displayConsentUi", 2, function () {
       //
     });
   } else {
-    //@ts-ignore
+    //@ts-expect-error
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     ramp.showCmpModal();
   }
 }
@@ -318,9 +322,9 @@ $(document).ready(() => {
 });
 
 window.onerror = function (error): void {
-  //@ts-ignore
+  //@ts-expect-error
   if (choice === "eg") {
-    if (typeof error === "string" && error.substring(0, 6) === "EG APS") {
+    if (typeof error === "string" && error.startsWith("EG APS")) {
       $("#ad-result-wrapper .iconAndText").addClass("withLeft");
     }
   }

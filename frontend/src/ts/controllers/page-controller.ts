@@ -1,4 +1,5 @@
 import * as Misc from "../utils/misc";
+import * as Strings from "../utils/strings";
 import * as ActivePage from "../states/active-page";
 import * as Settings from "../pages/settings";
 import * as Account from "../pages/account";
@@ -9,18 +10,21 @@ import * as PageLoading from "../pages/loading";
 import * as PageProfile from "../pages/profile";
 import * as PageProfileSearch from "../pages/profile-search";
 import * as Page404 from "../pages/404";
+import * as PageLeaderboards from "../pages/leaderboards";
+import * as PageAccountSettings from "../pages/account-settings";
 import * as PageTransition from "../states/page-transition";
 import * as AdController from "../controllers/ad-controller";
 import * as Focus from "../test/focus";
+import { PageName } from "../pages/page";
 
-interface ChangeOptions {
+type ChangeOptions = {
   force?: boolean;
-  params?: { [key: string]: string };
+  params?: Record<string, string>;
   data?: unknown;
-}
+};
 
 export async function change(
-  pageName: MonkeyTypes.PageName,
+  pageName: PageName,
   options = {} as ChangeOptions
 ): Promise<boolean> {
   const defaultOptions = {
@@ -34,12 +38,14 @@ export async function change(
       console.debug(
         `change page to ${pageName} stopped, page transition is true`
       );
-      return resolve(false);
+      resolve(false);
+      return;
     }
 
     if (!options.force && ActivePage.get() === pageName) {
       console.debug(`change page ${pageName} stoped, page already active`);
-      return resolve(false);
+      resolve(false);
+      return;
     } else {
       console.log(`changing page ${pageName}`);
     }
@@ -54,35 +60,46 @@ export async function change(
       profile: PageProfile.page,
       profileSearch: PageProfileSearch.page,
       404: Page404.page,
+      accountSettings: PageAccountSettings.page,
+      leaderboards: PageLeaderboards.page,
     };
 
     const previousPage = pages[ActivePage.get()];
     const nextPage = pages[pageName];
 
-    previousPage?.beforeHide();
-    PageTransition.set(true);
-    $(".page").removeClass("active");
-    Misc.swapElements(
-      previousPage.element,
-      nextPage.element,
-      250,
-      async () => {
-        PageTransition.set(false);
-        nextPage.element.addClass("active");
-        resolve(true);
-        nextPage?.afterShow();
-        AdController.reinstate();
-      },
-      async () => {
-        Focus.set(false);
-        ActivePage.set(nextPage.name);
-        previousPage?.afterHide();
-        await nextPage?.beforeShow({
-          params: options.params,
-          // @ts-expect-error
-          data: options.data,
-        });
-      }
-    );
+    void previousPage?.beforeHide().then(() => {
+      PageTransition.set(true);
+      $(".page").removeClass("active");
+      void Misc.swapElements(
+        previousPage.element,
+        nextPage.element,
+        250,
+        async () => {
+          PageTransition.set(false);
+          nextPage.element.addClass("active");
+          resolve(true);
+          await nextPage?.afterShow();
+          void AdController.reinstate();
+        },
+        async () => {
+          if (nextPage.name === "test") {
+            Misc.updateTitle();
+          } else {
+            Misc.updateTitle(
+              Strings.capitalizeFirstLetterOfEachWord(nextPage.name) +
+                " | Monkeytype"
+            );
+          }
+          Focus.set(false);
+          ActivePage.set(nextPage.name);
+          await previousPage?.afterHide();
+          await nextPage?.beforeShow({
+            params: options.params,
+            //@ts-expect-error
+            data: options.data,
+          });
+        }
+      );
+    });
   });
 }

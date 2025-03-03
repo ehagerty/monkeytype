@@ -1,42 +1,39 @@
 import * as Misc from "../utils/misc";
+import * as JSONData from "../utils/json-data";
 import Page from "./page";
 import Ape from "../ape";
 import * as Notifications from "../elements/notifications";
 import * as ChartController from "../controllers/chart-controller";
 import * as ConnectionState from "../states/connection";
-import intervalToDuration from "date-fns/intervalToDuration";
-import * as Skeleton from "../popups/skeleton";
+import { intervalToDuration } from "date-fns/intervalToDuration";
+import * as Skeleton from "../utils/skeleton";
+import {
+  TypingStats,
+  SpeedHistogram,
+} from "@monkeytype/contracts/schemas/public";
+import { getNumberWithMagnitude, numberWithSpaces } from "../utils/numbers";
 
 function reset(): void {
   $(".pageAbout .contributors").empty();
   $(".pageAbout .supporters").empty();
-  ChartController.globalSpeedHistogram.data.datasets[0].data = [];
-  ChartController.globalSpeedHistogram.updateColors();
+
+  ChartController.globalSpeedHistogram.getDataset("count").data = [];
+  void ChartController.globalSpeedHistogram.updateColors();
 }
 
-interface HistogramData {
-  [key: string]: number;
-}
-
-interface TypingStatsData {
-  type: string;
-  timeTyping: number;
-  testsCompleted: number;
-  testsStarted: number;
-}
-
-let speedHistogramResponseData: HistogramData | undefined;
-let typingStatsResponseData: TypingStatsData | undefined;
+let speedHistogramResponseData: SpeedHistogram | null;
+let typingStatsResponseData: TypingStats | null;
 
 function updateStatsAndHistogram(): void {
   if (speedHistogramResponseData) {
-    ChartController.globalSpeedHistogram.updateColors();
+    void ChartController.globalSpeedHistogram.updateColors();
     const bucketedSpeedStats = getHistogramDataBucketed(
       speedHistogramResponseData
     );
     ChartController.globalSpeedHistogram.data.labels =
       bucketedSpeedStats.labels;
-    ChartController.globalSpeedHistogram.data.datasets[0].data =
+
+    ChartController.globalSpeedHistogram.getDataset("count").data =
       bucketedSpeedStats.data;
   }
   if (typingStatsResponseData) {
@@ -53,25 +50,41 @@ function updateStatsAndHistogram(): void {
     $(".pageAbout #totalTimeTypingStat .valSmall").text("years");
     $(".pageAbout #totalTimeTypingStat").attr(
       "aria-label",
-      Math.round(secondsRounded / 3600) + " hours"
+      numberWithSpaces(Math.round(secondsRounded / 3600)) + " hours"
+    );
+
+    const startedWithMagnitude = getNumberWithMagnitude(
+      typingStatsResponseData.testsStarted
     );
 
     $(".pageAbout #totalStartedTestsStat .val").text(
-      Math.round(typingStatsResponseData.testsStarted / 1000000)
+      startedWithMagnitude.rounded < 10
+        ? startedWithMagnitude.roundedTo2
+        : startedWithMagnitude.rounded
     );
-    $(".pageAbout #totalStartedTestsStat .valSmall").text("million");
+    $(".pageAbout #totalStartedTestsStat .valSmall").text(
+      startedWithMagnitude.orderOfMagnitude
+    );
     $(".pageAbout #totalStartedTestsStat").attr(
       "aria-label",
-      typingStatsResponseData.testsStarted + " tests"
+      numberWithSpaces(typingStatsResponseData.testsStarted) + " tests"
+    );
+
+    const completedWIthMagnitude = getNumberWithMagnitude(
+      typingStatsResponseData.testsCompleted
     );
 
     $(".pageAbout #totalCompletedTestsStat .val").text(
-      Math.round(typingStatsResponseData.testsCompleted / 1000000)
+      completedWIthMagnitude.rounded < 10
+        ? completedWIthMagnitude.roundedTo2
+        : completedWIthMagnitude.rounded
     );
-    $(".pageAbout #totalCompletedTestsStat .valSmall").text("million");
+    $(".pageAbout #totalCompletedTestsStat .valSmall").text(
+      completedWIthMagnitude.orderOfMagnitude
+    );
     $(".pageAbout #totalCompletedTestsStat").attr(
       "aria-label",
-      typingStatsResponseData.testsCompleted + " tests"
+      numberWithSpaces(typingStatsResponseData.testsCompleted) + " tests"
     );
   }
 }
@@ -86,25 +99,27 @@ async function getStatsAndHistogramData(): Promise<void> {
     return;
   }
 
-  const speedStats = await Ape.publicStats.getSpeedHistogram({
-    language: "english",
-    mode: "time",
-    mode2: "60",
+  const speedStats = await Ape.public.getSpeedHistogram({
+    query: {
+      language: "english",
+      mode: "time",
+      mode2: "60",
+    },
   });
-  if (speedStats.status >= 200 && speedStats.status < 300) {
-    speedHistogramResponseData = speedStats.data;
+  if (speedStats.status === 200) {
+    speedHistogramResponseData = speedStats.body.data;
   } else {
     Notifications.add(
-      `Failed to get global speed stats for histogram: ${speedStats.message}`,
+      `Failed to get global speed stats for histogram: ${speedStats.body.message}`,
       -1
     );
   }
-  const typingStats = await Ape.publicStats.getTypingStats();
-  if (typingStats.status >= 200 && typingStats.status < 300) {
-    typingStatsResponseData = typingStats.data;
+  const typingStats = await Ape.public.getTypingStats();
+  if (typingStats.status === 200) {
+    typingStatsResponseData = typingStats.body.data;
   } else {
     Notifications.add(
-      `Failed to get global typing stats: ${speedStats.message}`,
+      `Failed to get global typing stats: ${speedStats.body.message}`,
       -1
     );
   }
@@ -113,7 +128,7 @@ async function getStatsAndHistogramData(): Promise<void> {
 async function fill(): Promise<void> {
   let supporters: string[];
   try {
-    supporters = await Misc.getSupportersList();
+    supporters = await JSONData.getSupportersList();
   } catch (e) {
     Notifications.add(
       Misc.createErrorMessage(e, "Failed to get supporters"),
@@ -124,7 +139,7 @@ async function fill(): Promise<void> {
 
   let contributors: string[];
   try {
-    contributors = await Misc.getContributorsList();
+    contributors = await JSONData.getContributorsList();
   } catch (e) {
     Notifications.add(
       Misc.createErrorMessage(e, "Failed to get contributors"),
@@ -133,7 +148,7 @@ async function fill(): Promise<void> {
     contributors = [];
   }
 
-  getStatsAndHistogramData().then(() => {
+  void getStatsAndHistogramData().then(() => {
     updateStatsAndHistogram();
   });
 
@@ -167,15 +182,17 @@ function getHistogramDataBucketed(data: Record<string, number>): {
   const keys = Object.keys(data).sort(
     (a, b) => parseInt(a, 10) - parseInt(b, 10)
   );
-  for (let i = 0; i < keys.length; i++) {
-    const bucket = parseInt(keys[i], 10);
+  // for (let i = 0; i < keys.length; i++) {
+  for (const [i, key] of keys.entries()) {
+    const nextKey = keys[i + 1];
+    const bucket = parseInt(key, 10);
     histogramChartDataBucketed.push({
       x: bucket,
-      y: data[bucket],
+      y: data[bucket] as number,
     });
     labels.push(`${bucket} - ${bucket + 9}`);
-    if (bucket + 10 !== parseInt(keys[i + 1], 10)) {
-      for (let j = bucket + 10; j < parseInt(keys[i + 1], 10); j += 10) {
+    if (nextKey !== undefined && bucket + 10 !== parseInt(nextKey, 10)) {
+      for (let j = bucket + 10; j < parseInt(nextKey, 10); j += 10) {
         histogramChartDataBucketed.push({ x: j, y: 0 });
         labels.push(`${j} - ${j + 9}`);
       }
@@ -184,24 +201,20 @@ function getHistogramDataBucketed(data: Record<string, number>): {
   return { data: histogramChartDataBucketed, labels };
 }
 
-export const page = new Page(
-  "about",
-  $(".page.pageAbout"),
-  "/about",
-  async () => {
-    //
-  },
-  async () => {
+export const page = new Page({
+  name: "about",
+  element: $(".page.pageAbout"),
+  path: "/about",
+  afterHide: async (): Promise<void> => {
     reset();
     Skeleton.remove("pageAbout");
   },
-  async () => {
-    Skeleton.append("pageAbout", "middle");
-    fill();
+  beforeShow: async (): Promise<void> => {
+    Skeleton.append("pageAbout", "main");
+    void fill();
   },
-  async () => {
-    //
-  }
-);
+});
 
-Skeleton.save("pageAbout");
+$(() => {
+  Skeleton.save("pageAbout");
+});
